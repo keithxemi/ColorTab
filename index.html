@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="utf-8">
+  <title>ColorTab</title>
+  <meta name="viewport" content="width=device-width, height=device-height, initial-scale=1, user-scalable=no" />
+  <meta name="description" content="ColorTab">
+  <meta name="author" content="Keith Thomas">
+  <script type="text/javascript" src="./ctab.js"></script>
+  <link rel="shortcut icon" href="./favicon.ico" type="image/x-icon">
+  <link rel="icon" href="./favicon.ico" type="image/x-icon">  
+  <link rel="stylesheet" type="text/css" href=".\ctab.css">
+</head>
+
+<body>  
+  <div id="main">    
+  <div id="content">
+  <div id="helpText"><div id="x">X</div>
+    <ul id="helpColors">
+      <li class="e liv">e||------|------|-----|----|----|--</li>
+      <li class="B liv">B||------|------|-----|----|----|--</li>
+      <li class="G liv">G||------|------|-----|----|----|--</li>
+      <li class="D liv">D||------|------|-----|----|----|--</li>
+      <li class="A liv">A||------|------|-----|----|----|--</li>
+      <li class="E liv">E||------|------|-----|----|----|--</li>
+    </ul><br/>
+    <p>Convert guitar tablature into a new compact notation system. ColorTab shows strings with color on a single line instead of using six lines of dashes. Converted songs are more convenient to use on screen or printed page. ColorTab saves lots of space while remaining easy to read and understand. Chords are enclosed by gray in low to high string order. Here is Greensleeves in text tablature and converted. ColorTab has two dash sizes for spacing as explained below.</p>
+    <p>
+    <textarea id="extab" contenteditable="true" spellcheck="false"  rows="6" cols="70" >e||-------||-------0--1-0-|--------------|--------------|-------------|
+B||-------||-1---3--------|-3---0------0-|-1------------|-0-----------|
+G||-----2-||--------------|-------0--2---|-----2-2--1-2-|-----1-----2-|
+D||-------||--------------|--------------|--------------|-------2-----|
+A||-------||-0-----3------|--------------|-0-----0------|-------------|
+E||-------||--------------|-3-----3------|--------------|-0-----0-----|</textarea></p>
+    <div id="ctex"><ol><li class="bp">|</li><li class="bp">|</li><li class="d">-</li><li class="d">-</li><li class="G">2</li><li class="bp">|</li><li class="bp">|</li><li class="g">.</li><li class="A c">0</li><li class="B c">1</li><li class="g">.</li><li class="d">-</li><li class="B">3</li><li class="g">.</li><li class="A c">3</li><li class="e c">0</li><li class="g">.</li><li class="h">-</li><li class="e">1 0</li><li class="bp">|</li><li class="g">.</li><li class="E c">3</li><li class="B c">3</li><li class="g">.</li><li class="d">-</li><li class="B">0</li><li class="g">.</li><li class="E c">3</li><li class="G c">0</li><li class="g">.</li><li class="h">-</li><li class="G">2</li><li class="B">0</li><li class="bp">|</li><br><li class="bp">|</li><li class="g">.</li><li class="A c">0</li><li class="B c">1</li><li class="g">.</li><li class="d">-</li><li class="G">2</li><li class="g">.</li><li class="A c">0</li><li class="G c">2</li><li class="g">.</li><li class="h">-</li><li class="G">1 2</li><li class="bp">|</li><li class="g">.</li><li class="E c">0</li><li class="B c">0</li><li class="g">.</li><li class="d">-</li><li class="G">1</li><li class="g">.</li><li class="E c">0</li><li class="D c">2</li><li class="g">.</li><li class="d">-</li><li class="G">2</li><li class="bp">|</li></ol></div>
+    <p>Copy almost any text tab and paste it as <input  type="radio" checked><mark>New</mark> to immediately convert into ColorTab. The previous conversion will be replaced. Lines of text that do not begin with string notes in the proper sequence are ignored so <em>an entire page can be copied and pasted at once</em>. If "No tab found" results, the starting letters do not match the beginnings on any group of tab text lines. Paste a six line tab example to change beginnings to match a different text tab style.</p>
+    <p>Only the tab portion of the pasted text remains after conversion. The text box can be edited and the ColorTab will be updated with any changes. <button >Add</button> can append the text to the previously created ColorTab. The paste mode can be changed to <input  type="radio" checked><mark>Add</mark> for the same append action with copied tab. The <input  type="radio" checked><mark>Edit</mark> paste mode allows normal paste editing, replacing selected parts of one line in the text area. Keyboard edits over type to avoid shifting measure lines. Backspace and Delete keys affect all six lines together, removing one column at a time. Insert adds a column of dashes. Measure bars can be added using the | key. Undo and Redo are Ctrl-Z and Ctrl-Y.</p>
+    <p>Checkbox options control the ColorTab conversion. Each <input type="checkbox" checked><mark>Part</mark> shown as || is text tab that indicates sections of the song. If checked, these will be kept as new ColorTab lines. <input type="checkbox" checked><mark>Bar</mark> will not split measures across lines when checked. Chords will not be broken apart at line ends. <input type="checkbox" checked><mark>Start</mark> will include the beginning string note letters in the ColorTab. <input type="checkbox" checked><mark>Dash</mark> retains the tab spacing or dashes can be removed. <input type="checkbox" checked><mark>Stray</mark> includes or omits letters or symbols that are not placed near any fret numbers, these may be errors and are shown in red. <input type="checkbox" checked><mark>4th</mark> adds an empty line after every four to ease reading. Unchecking any of these will produce a smaller but possibly less readable conversion.</p><p>
+    <button >Undo</button>and <button >Redo</button> will go back to earlier conversions and text content. These do not affect the checkbox options so different choices can be made after seeing how the content will fit. </p>
+    <p>The <mark>Size</mark> <button >+</button> or <button >-</button> can be adjusted as desired to fit more notes on each line or make numbers easier to read. Files of either ColorTab <button><span class="A">S</span><span class="G">a</span><span class="B">v</span><span class= "e">e</span></button>   or inline text tab <button>Save</button> can be downloaded. Text files can be loaded directly by <button >Open</button> like the paste methods. Printing can be to PDF or paper using the browser print function. The background will be white, controls will not print, and page scaling and rotation can be set as desired. A song title can be entered. Screenshots can also save the ColorTab output to a file.</p>
+    <p>A warning "Measure |'s not <mark>aligned</mark>" means there are some extra or missing dashes, or a mistake like I for | in the tab text. This should be corrected because some notes might be out of sequence in the conversion. Sections on new lines can be changed by adding or removing the ||'s in the text as desired.</p><div id="ctex2"><textarea id="extab2" contenteditable="true" spellcheck="false"  rows="6" cols="33" >|-------|-------|-------|-------|
+|-------|-------|-------|-------|
+|-1-2-3-|-1---3-|-1--2--|-12-23-|
+|-------|-------|-------|-------|
+|-------|-------|-------|-------|
+|-------|-------|-------|-------|</textarea>
+    <ol><li class="b">|</li><li class="G">1 2 3</li><li class="b">|</li><li class="G">1</li><li class="d">-</li><li class="G">3</li><li class="b">|</li><li class="G">1</li><li class="h">-</li><li class="G">2</li><li class="h">-</li><li class="b">|</li><li class="G">12 23</li><li class="b">|</li></ol></div><p>The long and short <mark>dashes</mark> are used according to the text tab spacing. If the notes in ascii text tab are as close together as possible, they must still be separated, like 1-2-3. This separation is not required in ColorTab so no dash is used. Enough separation to allow adding a note between two notes requires three dashes in text tab like this 1---3. This spacing is represented by the long dash in ColorTab. A short dash is used when this 1--2 sequence occurs. Because text tab spacing is affected by two digit fret numbers and extra characters like b and / the timing indication is often not precise.</p><p>The string <mark>colors</mark> used are chosen for good contrast between any string pair, and for best possible visibility for users with color vision deficiency. They are even usable in grayscale, going dark to light from low to high strings. The fret numbers also reverse from black to white for contrast, white for wound strings. Combined with the available large type size, ColorTab can be easier to read than conventional notation.</p>
+    <ul id="helpColors">
+      <li class="e liv">e||------|------|-----|----|----|--</li>
+      <li class="B liv">B||------|------|-----|----|----|--</li>
+      <li class="G liv">G||------|------|-----|----|----|--</li>
+      <li class="D liv">D||------|------|-----|----|----|--</li>
+      <li class="A liv">A||------|------|-----|----|----|--</li>
+      <li class="E liv">E||------|------|-----|----|----|--</li>
+    </ul>
+  </div>    
+  <div id="nonPrint">
+
+  <div id="undo"><button id="bck" >Undo</button> <button id="fwd" >Redo</button></div>
+
+  <div id="title"><ol>C<li class="E">o</li><li class="A">l</li><li class="D">o</li><li class="G">r</li>T<li class="B">a</li><li class="e">b</li> </ol>
+  </div>
+
+  <div id="actions"> Paste: <label><input id="newPaste"  name="pOption" type="radio" checked>New </label> <label><input id="addPaste" name="pOption" type="radio">Add </label> <label><input id="editPaste" name="pOption" type="radio">Edit</label>  <button id="append" >Add</button>   <button id="dFile"><span class="A">S</span><span class="G">a</span><span class="B">v</span><span class= "e">e</span></button>  <button id="dTxt">Save</button> <output id="out"></output>  <label for="chooseFile" class="fileLabel">Open</label>  <input type='file' id="chooseFile" accept='text/plain'><button id="helpButton" >Help</button></div>
+  
+  <div id="inText"><textarea id="TabIn" contenteditable="true" spellcheck="false"  rows="8" cols="80" placeholder=" Paste tablature here &#10; or open a text file"></textarea></div>
+
+    <div id="convert">  <label><input id="kParts" type="checkbox" checked>Part </label> <label><input id="kMeasures" type="checkbox" checked>Bar</label>  <label><input id="kStart" type="checkbox" checked>Start</label> <label> <input id="kSpaces" type="checkbox" checked>Dash</label>  <label><input id="kStrays" type="checkbox" checked>Stray</label> <label><input id="brkFour" type="checkbox" checked>4th</label> <label> <button id="bigger" > + </button>  Size <button id="smaller" > -  </button> </label></div>
+</div>
+    
+<noscript>This page does nothing without JavaScript</noscript>
+  
+<div id="printThis"> 
+    <div id="sTitle"><textarea contenteditable="true" spellcheck="false" id="songTitle" rows="1" cols="40" placeholder="Song title"></textarea></div>
+  <ol id="ctOut"></ol>
+</div>
+<div id="bottom">
+<footer id="foot">&copy; Copyright 2020, Keith Thomas<br>
+  <a href="http://keith-thomas.com/colortab/">http://keith-thomas.com/colortab/</a></footer>
+</div>
+</div>
+</div> 
+</body>
+</html>
