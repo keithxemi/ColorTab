@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <title>ColorTab</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="ColorTab">
+  <meta name="author" content="Keith Thomas">
+  <meta http-equiv='cache-control' content='no-cache'>
+  <meta http-equiv='expires' content='0'>
+  <meta http-equiv='pragma' content='no-cache'>
+  
+  <meta property="og:url" content="http://colortab.org/"/>
+  <meta property="og:type" content="website"/>
+  <meta property="og:title" content="ColorTab Guitar Notation"/>
+  <meta property="og:description" content="Convert tablature into compact notation. ColorTab has fret numbers inline in string colors instead of lines of dashes. Songs are more convenient on screen or printed page. ColorTab saves space and is easy to read." />
+  <meta property="og:image" content="http://colortab.org/images/fbnote.png"/>
+  <meta property="og:image:type" content="image/png" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="445" />
+  <meta property="og:fb:admins" content="10218875309186443" />
+  <script id="ljs2" src="offline.js"></script>  
+  <script id="lcss" type="text/javascript" src=".\ctab.css" ></script>
+  <script id="ljs" type="text/javascript" src=".\ctab.js" ></script>
+</head>
+
+<body>
+  
+<!--  <input class="debugs" id="playnotes" value="" />
+  <input class="debugs" id="durations" value="" />
+  <input class="debugs" id="waittimes" value="" /> --> 
+  <textarea id="debugtimes"> </textarea>  
+  
+  <noscript><h3>Please enable JavaScript to use ColorTab</h3></noscript>
+
+
+  <textarea id="scriptSrc" style="display:none"></textarea>
+  <textarea id="scriptSrc2" style="display:none"></textarea>
+  <button id="notePlay" style="display:none"></button>
+
+  <div id="main">
+    <div id="topleft"><button id="menuTog" class="transport">&#xe868;</button> <button id="savFile" class="transport">&#x00d9;</button></div> 
+    <button id="helpButton" type="button">Help</button>    
+    <div id="makefiles"><button id="showdebugs">debug</button>
+      <input type="file" id="fileinput" accept=".js" /><input type="file" id="fileinput2" accept=".js" /><button id ="make" type="button">Make Offline</button>
+    </div>
+ 
+<div id="helpText">
+    <ul id="helpColors">
+      <li class="s1 liv">e||------|------|-----|----|----|--</li>
+      <li class="s2 liv">B||------|------|-----|----|----|--</li>
+      <li class="s3 liv">G||------|------|-----|----|----|--</li>
+      <li class="s4 liv">D||------|------|-----|----|----|--</li>
+      <li class="s5 liv">A||------|------|-----|----|----|--</li>
+      <li class="s6 liv">E||------|------|-----|----|----|--</li>
+    </ul>
+  <h3><em>Click <button>Save</button> to download this web app for offline and sharing.</em></h3>
+    <h3>Introducing ColorTab</h3>
+    <p>Create or convert guitar tablature using a new compact notation. ColorTab shows strings by color on a single line instead of six lines of dashes. Converted songs are more convenient  on screen or printed page. ColorTab saves space but is easy to read and understand. Chords are under gray in low to high string order. Here is Greensleeves in text tablature and converted (this example will load if <button>Help</button> is clicked while the Tab section is empty).</p>
+    <div id="exgreen">
+    <textarea id="extab" spellcheck="false" rows="7" cols="72" >e||-------||-------0--1-0-|--------------|--------------|-------------|
+B||-------||-1---3--------|-3---0------0-|-1------------|-0-----------|
+G||-----2-||--------------|-------0--2---|-----2-2--1-2-|-----1-----2-|
+D||-------||--------------|--------------|--------------|-------2-----|
+A||-------||-0-----3------|--------------|-0-----0------|-------------|
+E||-------||--------------|-3-----0------|--------------|-0-----0-----|</textarea></div>
+    <div id="ctex"><ol><li class="bp bd"><i class="z">​</i>|</li><li class="bp"><i class="z">​</i>|</li><li class="d"><i class="z">​</i>-</li><li class="d"><i class="z">​</i>-</li><li class="s3"><i class="z">​</i>2</li><li class="bp">|</li><br><li class="bp bd"><i class="z">​</i>|</li><li class="bp"><i class="z">​</i>|</li><li class="g"><i class="z">​</i></li><li class="s5 c"><i class="z">​</i>0</li><li class="s2 c"><i class="z">​</i>1</li><li class="g"><i class="z">​</i></li><li class="d"><i class="z">​</i>-</li><li class="s2"><i class="z">​</i>3</li><li class="g"><i class="z">​</i></li><li class="s5 c"><i class="z">​</i>3</li><li class="s1 c"><i class="z">​</i>0</li><li class="g"><i class="z">​</i></li><li class="h"><i class="z">​</i>-</li><li class="s1"><i class="z">​</i>1 0</li><li class="bp"><i class="z">​</i>|</li><li class="g"><i class="z">​</i></li><li class="s6 c"><i class="z">​</i>3</li><li class="s2 c"><i class="z">​</i>3</li><li class="g"><i class="z">​</i></li><li class="d"><i class="z">​</i>-</li><li class="s2"><i class="z">​</i>0</li><li class="g"><i class="z">​</i></li><li class="s6 c"><i class="z">​</i>0</li><li class="s3 c"><i class="z">​</i>0</li><li class="g"><i class="z">​</i></li><li class="h"><i class="z">​</i>-</li><li class="s3"><i class="z">​</i>2</li><li class="s2"><i class="z">​</i>0</li><li class="bp"><i class="z">​</i>|</li><br><li class="bp"><i class="z">​</i>|</li><li class="g"><i class="z">​</i></li><li class="s5 c"><i class="z">​</i>0</li><li class="s2 c"><i class="z">​</i>1</li><li class="g"><i class="z">​</i></li><li class="d"><i class="z">​</i>-</li><li class="s3"><i class="z">​</i>2</li><li class="g"><i class="z">​</i></li><li class="s5 c"><i class="z">​</i>0</li><li class="s3 c"><i class="z">​</i>2</li><li class="g"><i class="z">​</i></li><li class="h"><i class="z">​</i>-</li><li class="s3"><i class="z">​</i>1 2</li><li class="bp"><i class="z">​</i>|</li><li class="g"><i class="z">​</i></li><li class="s6 c"><i class="z">​</i>0</li><li class="s2 c"><i class="z">​</i>0</li><li class="g"><i class="z">​</i></li><li class="d"><i class="z">​</i>-</li><li class="s3"><i class="z">​</i>1</li><li class="g"><i class="z">​</i></li><li class="s6 c"><i class="z">​</i>0</li><li class="s4 c"><i class="z">​</i>2</li><li class="g"><i class="z">​</i></li><li class="d"><i class="z">​</i>-</li><li class="s3"><i class="z">​</i>2</li><li class="bp"><i class="z">​</i>|</li></ol></div>
+    <p>(Reload or change number of strings to clear the example)</p>
+  
+    <h3>Devices</h3>
+    <p>ColorTab can be used online or from html files on any device that supports a web browser like Chrome or Firefox. A laptop or desktop is best for editing, but any device can be used. Touch keyboards for phones use <kbd>&crarr;</kbd> to end a measure, <kbd>Space</kbd> adds a column of dashes, <kbd>.</kbd> cycles through the strings and <kbd>,</kbd> moves back a column. Turning off predictive text is recommended. Saved ColorTab song files can be shared by message or email attachment. These small files can be edited, copied and saved to make changes or create new tabs without an internet connection (when device security permits).</p>
+    <h3>Instruments</h3>
+    <p>Tab for any stringed instrument with 4 to 9 strings can be converted or created. The <select id="help6"><option>6 G</option></select> selector has standard choices with the most common tunings. The instrument name in the ColorTab can be edited. String notes and tab matching starting characters can be customized for any tuning by editing or pasting example tab. There are three columns for notes like Eb and then either |'s or -'s. Spaces and capitalization do not affect copy and paste matching. Instrument selection should be done before adding or composing tab. However, the matching pattern and notes can be changed anytime for combining tab from sources with different formats.</p>
+    <h3>Copy Existing Tab</h3>
+    <p>Copy any text tab and paste to immediately convert into ColorTab. Use the browser menu paste, right click or Ctrl/Cmd+V to insert tab copied from other apps. The <button>Paste</button> button is used for tab sections copied in the editor, while clipboard content is pasted by the browser. Lines of text that do not begin with string notes in proper sequence are ignored so <em>an entire page can be copied and pasted at once</em>. Only the tablature portion of pasted text remains after conversion. If "No tab found" results, starting string note letters do not match the beginnings on any group of tab lines. The matching pattern can be changed to match any tab style.</p>
+    <h3>Editing Tab Text</h3>
+    <p>Tab in the text box can be easily edited and ColorTab below is updated instantly. Composing new tab is also quick and easy. All string lines can be changed together. <button>Copy</button> or <button >Cut</button> part of tab text using the start and end of a highlighted selection. Only one line will show as selected but all will be copied or removed. <button >Paste</button> inserts selected lines at the cursor, click or move elsewhere and paste to insert tab anywhere including the end or beginning. Any line can be used to position the insertion cursor. Copy or Cut tab sections to paste them into other text apps from the clipboard. If nothing is highlighted the entire tab text is copied or cut.</p>
+    <p> <kbd>Backspace</kbd> and <kbd>Delete</kbd> keys remove one column at a time. <kbd>Space</kbd> or <kbd>Insert</kbd> keys add a column of dashes at the cursor position. Measure bars can be inserted using the <kbd>&crarr;</kbd>, <kbd>Enter</kbd> or <kbd>|</kbd> key, or by  copying. Fret numbers or other characters overtype exising tab. Adding a note that would fall on a bar will insert a new column. Adding at the end fills in dashes on all other lines. Fret numbers typed sequentially on the same string will automatically be separated by dashes, saving keystrokes (two digit entries up to fret 24 will not add dashes). <button >Undo</button>and <button >Redo</button> are <kbd>Page Up</kbd> and <kbd>Page Down</kbd> keys. <kbd>&larr;</kbd> <kbd>&uarr;</kbd> <kbd>&darr;</kbd> <kbd>&rarr;</kbd>, <kbd>Home</kbd>, <kbd>End</kbd> touch or the mouse can be used to move around.</p>
+    <h3>ColorTab Style Choices </h3>
+    <p><button class="toggle">|| </button> starts each tab section on a new line, where double || separates parts of the song. New staves in copied tab will paste as parts, but the |'s can be edited as desired to split or join sections. <button class="toggle"> | </button> won't split measures across lines when active. Chords are not broken apart at line ends.  <button  class="toggle"> - </button> keeps  tab spacing or removes dashes. When off like this <button class="toggle off"> - </button>, these buttons make a smaller but possibly less readable conversion. Stray letters or symbols not placed near any fret numbers are shown like  <i class="o">&nbsp;this </i>.  Font size <button id="biggerHelp"><i style="font-size: 24px">&nbsp;A&nbsp;</i></button> &nbsp; <button id="smallerHelp" ><i style="font-size: 16px">&nbsp;&nbsp;A&nbsp;&nbsp;</i></button> can be adjusted to make text easier to read or fit more notes on each line.</p>
+    <h3>Lyrics</h3>
+    <p>The  lower portion of the gray area is used to paste or type lyrics or other text such as chord names. This text will appear below ColorTab lines aligned with measure bars. Spaces in the lyrics area can be used to position text into desired measures. Lyrics for an entire song can be copied and pasted without regard to line breaks, these are removed.  Lyric text will skip over measure bars that come from tab text.</p>
+    <p> Because chords are inline rather than vertical, the position of lyric text is often not perfect. Spaces can adjust positions of words and syllables to match tab notes and chords. When needed, blanks will extend the text tab measures to make room for lyrics. Letter spacing of the lyric text can be adjusted with <label> <button><i style="letter-spacing: 5px">aa</i></button> <button><i style="letter-spacing: -2px">aa</i></button> </label> buttons.</p>
+    <h3>Measures</h3>
+  <p>Measure bars | usually come from the tab text and are automatically added to the lyric text area. Sometimes it is preferable to start with lyrics, adding measures directly in lyric text to create or modify tab |'s. <kbd>Tab -> |</kbd> can be changed to <kbd><i style="background-color: #b6c7ff">Lyric ->|</i></kbd> to use lyrics as the measure | source (<kbd>Shift-Alt</kbd> shortcut). Highlighting will change from gray to blue to indicate this editing mode. Measure bars can then be added, moved or deleted in the lyrics and the tab bars will follow.  Once lyrics and tab measure bars are in place and matching, use the <kbd><i style="background-color: #b6ffc7">|=Lock=|</i></kbd> option (<kbd>Esc</kbd> shortcut). Highlighted in green, each measure is edited independantly without affecting others. Tab or lyric text can be added or removed as needed. Measure bars cannot be changed while locked. The measure bar source can be changed anytime. <kbd>Esc</kbd> and <kbd>Tab</kbd> keyboard shortcuts change from Lock to Tab | modes. <kbd>Alt</kbd> moves to lyrics from the tab area, <kbd>&uarr;</kbd> moves back up to the tab. </p>
+    <p>A warning "<strong>Measure |'s not aligned</strong>" means there are some extra or missing dashes, or a mistake like I for | in the tab text. Measures should be corrected because some notes might be out of sequence in the conversion. This can be difficult to fix since many measures may be affected and all lines are edited together. Error messages can be stopped by <button class="toggle off"> | </button> then editing and <button class="toggle"> | </button> when done.  Sections beginning on new lines can be done by adding or removing ||'s in the text as desired. </p>
+    <h3>Chord Names and Lyric Styles</h3>
+    <p>Special text such as chord names in the lyrics portion of ColorTab can be added using [Am7] like this <i class="chordSym">Am7</i>. Text enclosed in (parenthesis) will be <em>italic</em>. Sections such as <i class="break">Chorus</i> are formed by  %Chorus% and will insert a blank line when used after || . Any text style can be created by using {} to enclose CSS (Cascaded Style Sheets) instructions. For example {color:yellow; background:blue; font-family:monospace} <i style="color:yellow; background: blue; font-family:monospace"> is this.</i> The style only applies to the individual measure and can be ended by using  \ to separate some later text. To add multiple lines in lyrics use &lt;br&gt; and then an empty part || to make room between the ColorTab lines.</p>
+    <h3>Music Symbols</h3>
+    <p>Notes, rests, articulations, barlines, dynamics, fingering, time signatures etc., can be added in the lyric text or in the tab. The <button>&#xE047;</button> button reveals a table with all music symbols. These will be entered at the cursor location with a single click on the desired symbol. Notes should be placed immediately after a fret number to indicate duration in the ColorTab.</p>
+    <p>Musical symbols that are not associated with fret number notes can also be added. These are typically at the beginning or end of measures but can be inserted anywhere. Symbols that do not follow fret numbers will appear in the ColorTab on a gray background like this <span class="o">&nbsp;&#xE040; &#xE046; &#xE048; &#xE041;</span> The text tab is converted to ColorTab from bottom to top and then left to right.</p>
+    <h3>Open and Save Files</h3>
+    <p>The <button>Save</button> downloads songs as ColorTab web pages (.html files) using the song title as file name. These can be used offline without Internet, they include all editing tools and can resave as new songs or versions. Tab text files are loaded directly with <button >Open</button> or by drag and drop in the tab area. The new tab from the file will be inserted at the cursor. Print ColorTab to <mark>PDF</mark> or paper using the browser print function. The background is white, text and controls do not print, and page scaling and rotation can be set as desired. Choose the print background graphics option for color. Import tab from <mark>MusicXML</mark> using the link at the bottom. <button>Copy</button> tab and paste in a new text file to save ascii tab.</p>
+
+    <h3>Dashes</h3>
+    <div id="ctex2"><textarea id="extab2" spellcheck="false"  rows="6" cols="33" >|-------|-------|-------|-------|
+|-------|-------|-------|-------|
+|-1-2-3-|-1---3-|-1--2--|-12-23-|
+|-------|-------|-------|-------|
+|-------|-------|-------|-------|
+|-------|-------|-------|-------|</textarea>
+    <ol><li class="b"><i class="z">​</i>|</li><li class="s3"><i class="z">​</i>1 2 3</li><li class="b"><i class="z">​</i>|</li><li class="s3"><i class="z">​</i>1</li><li class="d"><i class="z">​</i>-</li><li class="s3"><i class="z">​</i>3</li><li class="b"><i class="z">​</i>|</li><li class="s3"><i class="z">​</i>1</li><li class="h"><i class="z">​</i>-</li><li class="s3"><i class="z">​</i>2</li><li class="h"><i class="z">​</i>-</li><li class="b"><i class="z">​</i>|</li><li class="s3"><i class="z">​</i>12 23</li><li class="b"><i class="z">​</i>|</li></ol></div><p>There are two dash sizes for timing. Long and short dashes are used according to the text tab spacing. If notes in ascii text tab are as close together as possible, they must still be separated, like 1-2-3. This separation is not required in ColorTab so no dash is used. Enough separation to allow adding a note between two notes requires three dashes in tab like this 1---3. This spacing is represented by a long dash in ColorTab. A short dash is used when this 1--2 sequence occurs. Because text tab spacing is affected by two digit fret numbers and extra characters like b and / the timing indication is often not precise.</p>
+    <h3>Etc.</h3>
+
+    <p>String colors are chosen for good contrast between any string pair, and for best possible visibility for users with color vision deficiency. They are even usable in grayscale, going dark to light from low to high strings. Fret numbers reverse from black to white for contrast, white for wound strings. Combined with selectable large type size, ColorTab can be easier to read than other notation.</p>
+    <ul id="helpColors">
+      <li class="s1 liv">e||------|------|-----|----|----|--</li>
+      <li class="s2 liv">B||------|------|-----|----|----|--</li>
+      <li class="s3 liv">G||------|------|-----|----|----|--</li>
+      <li class="s4 liv">D||------|------|-----|----|----|--</li>
+      <li class="s5 liv">A||------|------|-----|----|----|--</li>
+      <li class="s6 liv">E||------|------|-----|----|----|--</li>
+    </ul>
+  <p></p>  
+  <p>Version 0.9 10/10/2020</p>
+  </div><!--help text-->
+    
+      
+  <div id="title"><ol><li class="s9t">C</li><li class="s6t">o</li><li class="s5t">l</li><li class="s4t">o</li><li class="s3t">r</li><li class="s8t">T</li><li class="s2t">a</li><span class="titledd">&#x00D1;</span></ol>
+  </div>      
+<div id="playcontrol">
+  <button class="transport" id="rewind">&#xeb22;</button><button class="transport" id="revbutton">&#xeb20;</button><button class="transport" id="play">&#xeb1c;</button><button class="transport" id="fwdbutton">&#xeb1F;</button><button class="transport" id="gotoend">&#xeb21;</button><button class="transport" id="loopbtn">&#xeb23;</button><button class="transport" id="metro">&#xe867;</button>
+  <div id="gotoDiv">&nbsp;Jump to measure <input type="number" value="1" id="barnumber"> <button id="gonow">Go</button> &nbsp;<button id="nogo">X</button></div>
+</div>
+<div id="nonPrint">      
+     
+      <div id="toprow" class="morebuttons"><label id="openLabel" for="chooseFile" class="fileLabel">Open</label><input type='file' id="chooseFile" accept='.txt, text/plain'> <button id="savtxt" type="button">Save</button> <select id="numStrings" >
+        <option value="4 Bass">4&nbsp;&nbsp;Bass</option>
+        <option value="4 Mandolin">4&nbsp;&nbsp;Mandolin</option>
+        <option value="4 Ukulele">4&nbsp;&nbsp;Ukulele</option>
+        <option value="5 Banjo">5&nbsp;&nbsp;Banjo</option>
+        <option value="5 Cuatro">5&nbsp;&nbsp;Cuatro</option>      
+        <option value="5 Bass">5&nbsp;&nbsp;Bass</option>
+        <option value="6 Bass">6&nbsp;&nbsp;Bass</option>      
+        <option value="6 Guitar" selected>6&nbsp;&nbsp;Guitar</option>
+        <option value="7 Guitar">7&nbsp;&nbsp;Guitar</option>
+        <option value="8 Guitar">8&nbsp;&nbsp;Guitar</option>
+        <option value="9 Guitar">9&nbsp;&nbsp;Guitar</option>
+        <option value="12 Guitar">12&nbsp;&nbsp;Guitar</option></select><output id="out"></output> <button id="pitchbutton">&#xE274;&#xE271;</button> <input type="number" id="tempo" value="120"/></div> 
+  <div id="soundsel" class="morebuttons">      
+<select id="sfont">
+    <option value="Offline">Offline</option>
+    <option value="MusyngKite/">Musyng Kite</option>
+    <option value="FatBoy/">FatBoy</option>
+    <option value="FluidR3_GM/">Fluid</option>      
+  </select>  
+  <select id="instrsf">
+    <option value="acoustic_guitar_steel">Acoustic Guitar Steel</option>      
+    <option value="acoustic_bass">Acoustic Bass</option>
+    <option value="acoustic_guitar_nylon">Acoustic Guitar Nylon</option>
+    <option value="acoustic_guitar_steel">Acoustic Guitar Steel</option>
+    <option value="banjo">Banjo</option>
+    <option value="cello">Cello</option>
+    <option value="distortion_guitar">Distortion Guitar</option>
+    <option value="dulcimer">Dulcimer</option>
+    <option value="electric_bass_finger">Electric Bass Finger</option>
+    <option value="electric_bass_pick">Electric Bass Pick</option>
+    <option value="electric_guitar_clean">Electric Guitar Clean</option>
+    <option value="electric_guitar_jazz">Electric Guitar Jazz</option>
+    <option value="electric_guitar_muted">Electric Guitar Muted</option>
+    <option value="fretless_bass">Fretless Bass</option>
+    <option value="guitar_harmonics">Guitar Harmonics</option>
+    <option value="overdriven_guitar">Overdriven Guitar</option>
+    <option value="pizzicato_strings">Pizzicato Strings</option>
+    <option value="sitar">Sitar</option>
+    <option value="slap_bass_1">Slap Bass 1</option>
+    <option value="slap_bass_2">Slap Bass 2</option>
+    <option value="synth_bass_1">Synth Bass 1</option>
+    <option value="synth_bass_2">Synth Bass 2</option>
+    <option value="viola">Viola</option>
+    <option value="violin">Violin</option>
+  </select> <button id="colorButton" type="button">-</button></div>
+  
+      <div id="botrow" class="morebuttons"><select id="barMode"><option value="Tab">&nbsp;Tab -&#x003e; |</option><option value="Off">&nbsp;|=Lock=|</option><option value="Lyr">&nbsp;Lyric -&#x003e; |</option></select> <button id="kParts" class="toggle" type="button">||&#x2004;</button> <button id="kMeasures" class="toggle" type="button">&#x2004;|&#x2004;</button> <button id="kSpaces" class="toggle" type="button">&#x2004;-&#x2004;</button> <button id="moreSpace" type="button" >aa</button> <button id="lessSpace"  type="button">aa</button> <button id="gotoM">J</button></div> 
+
+      <div id="actions">&#x2004;<button id="bck" type="button">&#x0d2;</button> <button id="fwd"  type="button">&#x0d3;</button> <button id="cutButton"  type="button">Cut</button> <button id="copyButton"  type="button">Copy</button> <button id="addButton"  type="button">Paste</button> <button id="noteButton" type="button"><span id="showNote">&#xE1d7;</span></button> <button id="codaButton" type="button">&#x0d4;</button></div>
+
+      <div id="msgdiv" contenteditable="true" spellcheck="false">
+        <div id="message"></div>
+      </div>
+<div id="tabcontainer">
+ 
+<div id="inText">
+  <div id="BarNum" draggable="false"></div>
+  <div id="TuneBacker"></div>  
+  <div class="overtune tstripe" id=u1></div>
+  <div class="overtune tstripe" id=u2></div>
+  <div class="overtune tstripe" id=u3></div>
+  <div class="overtune tstripe" id=u4></div>
+  <div class="overtune tstripe" id=u5></div>
+  <div class="overtune tstripe" id=u6></div>  
+  <div class="overtune tstripe" id=u7></div>
+  <div class="overtune tstripe" id=u8></div>
+  <div class="overtune tstripe" id=u9></div>  
+  <textarea id="TuneIn" draggable="false" spellcheck="false" rows="6" ></textarea>
+  <textarea id="TuneIn2" draggable="false" spellcheck="false" rows="6" ></textarea>  
+  <div id="TabBacker"></div>
+  <div class="overlay stripe" id=t1></div>
+  <div class="overlay stripe" id=t2></div>
+  <div class="overlay stripe" id=t3></div>
+  <div class="overlay stripe" id=t4></div>
+  <div class="overlay stripe" id=t5></div>
+  <div class="overlay stripe" id=t6></div>  
+  <div class="overlay stripe" id=t7></div>
+  <div class="overlay stripe" id=t8></div>
+  <div class="overlay stripe" id=t9></div>    
+  <textarea id="TabIn" draggable="false" wrap="off" spellcheck="false"  rows="6" placeholder=" paste or type tab&#10; open or drop file"></textarea>
+  <textarea id="TabIn2" draggable="false" wrap="off" spellcheck="false"  rows="6" placeholder=" paste or type tab&#10; open or drop file"></textarea>  
+  <textarea id="LyricIn" draggable="false" wrap="off" spellcheck="false"  rows="2" placeholder="paste or type lyrics"></textarea>
+</div>
+    
+</div>
+      <div id="gap"></div>
+     
+      <div id="noterow"><!--<div id="inside">-->
+        <table id="tnotes">
+<tr><td>&#xE1Fc;</td><td>&#xE1fd;</td><td>&#xE1d2;</td><td>&#xECA1;</td><td>&#xE1d3;</td><td>&#xECA3;</td><td>&#xE1d5;</td><td>&#xECA5;</td><td>&#xE1d7;</td><td>&#xECA7;</td><td>&#xE1d9;</td><td>&#xE1db;</td><td>&#xE1dd;</td><td>&#xE1df;</td><td>&#xE1e1;</td><td>&#xE560;</td></tr>
+<tr><td>&#xE634;</td><td>&#xE4BA;</td><td>&#xEcb7;</td><td>&#xEca2;</td><td>&#xE1D4;</td><td>&#xEca4;</td><td>&#xE1D6;</td><td>&#xEca6;</td><td>&#xE1D8;</td><td>&#xEca8;</td><td>&#xE1DA;</td><td>&#xE1DC;</td><td>&#xE1de;</td><td>&#xE1e0;</td><td>&#xE1e2;</td><td>&#xE561;</td></tr>
+<tr><td>&#xE635;</td><td>&#xEcb6;</td><td>&#xE4F4;</td><td>&#xEcaf;</td><td>&#xE4F5;</td><td>&#xEcb0;</td><td>&#xE4E5;</td><td>&#xEcb1;</td><td>&#xE4E6;</td><td>&#xEcb2;</td><td>&#xE4E7;</td><td>&#xE4E8;</td><td>&#xE4e9;</td><td>&#xE4ea;</td><td>&#xE4eb;</td><td>&#x00d0;</td></tr>
+<tr><td>&#xf5ee;</td><td>&#xf5ef;</td><td>&#xf5f0;</td><td>&#xf5f1;</td><td>&#xf5f2;</td><td>&#xf5f3;</td><td>&#xf5f4;</td><td>&#xf5f5;</td><td>&#xf5f6;</td><td>&#xf5f7;</td><td>&#xf5f8;</td><td>&#xf5f9;</td><td>&#xf5fa;</td><td>&#xE09c;</td><td>&#xE09d;</td><td>&#xEab8;</td></tr>
+<tr><td>&#xE1F8;</td><td>&#xEcab;</td><td>&#xE1F3;</td><td>&#xEcad;</td><td>&#xE1Fa;</td><td>&#xEcac;</td><td>&#xE1F5;</td><td>&#xEcae;</td><td>&#xE1Fb;</td><td>&#xE1F6;</td><td>&#x2934;</td><td>&#x2912;</td><td>&#x2935;</td><td>&#xE656;</td><td>&#xE657;</td><td>&#xE658;</td></tr>
+<tr><td>&#x207C;</td><td>&#x00B9;</td><td>&#x00B2;</td><td>&#x00B3;</td><td>&#x2074;</td><td>&#x2075;</td><td>&#x2076;</td><td>&#x2077;</td><td>&#x2078;</td><td>&#x2079;</td><td>&#x2070;</td><td>&#xE670;</td><td>&#xE671;</td><td>&#xE037;</td><td>&#xE032;</td><td>&#xE035;</td></tr>
+<tr><td>&#xe866;</td><td>&#x2081;</td><td>&#x2082;</td><td>&#x2083;</td><td>&#x2084;</td><td>&#x2085;</td><td>&#x2086;</td><td>&#x2087;</td><td>&#x2088;</td><td>&#x2089;</td><td>&#x2080;</td><td>&#xE870;</td><td>&#xE871;</td><td>&#xE872;</td><td>&#xE873;</td><td>&#xE87b;</td></tr>          
+<tr><td>&#xE040;</td><td>&#xE041;</td><td>&#xE042;</td><td>&#xE500;</td><td>&#xE501;</td><td>&#xE046;</td><td>&#x00d7;</td><td>&#x00d6;</td><td>&#xE048;</td><td>&#xE049;</td><td>&#xE045;</td><td>&#xE047;</td><td>&#xE04a;</td><td>&#xE04b;</td><td>&#x00d8;</td><td>&#x00d5;</td></tr>          
+<tr><td>&#xE53e;</td><td>&#xE53f;</td><td>&#xE541;</td><td>&#xE4c0;</td><td>&#xE4c2;</td><td>&#xE4c4;</td><td>&#xE4c6;</td><td>&#xE4c8;</td><td>&#xE4ca;</td><td>&#xE4cc;</td><td>&#xE4ce;</td><td>&#xE4cf;</td><td>&#xE4d0;</td><td>&#xE4d1;</td><td>&#xE4d2;</td><td>&#xE4d3;</td></tr>
+
+<tr><td>&#xEd17;</td><td>&#xEd18;</td><td>&#xEd19;</td><td>&#xEd1a;</td><td>&#xEd1b;</td><td>&#xEd1c;</td><td>&#xEd1d;</td><td>&#xEd1e;</td><td>&#xEd1f;</td><td>&#xE520;</td><td>&#xE521;</td><td>&#xE522;</td><td>&#xE523;</td><td>&#xE524;</td><td>&#xE525;</td><td>&#xE526;</td></tr>
+<tr><td>&#xE566;</td><td>&#xE568;</td><td>&#xE569;</td><td>&#xE56a;</td><td>&#xE56b;</td><td>&#xE56c;</td><td>&#xE56d;</td><td>&#xE111;</td><td>&#xE112;</td><td>&#xE114;</td><td>&#xE115;</td><td>&#xE1fe;</td><td>&#xE1ff;</td><td>&#xE200;</td><td>&#xEabb;</td><td>&#xEabc;</td></tr>
+<tr><td>&#xE4a0;</td><td>&#xE4a4;</td><td>&#xE4a6;</td><td>&#xE4aa;</td><td>&#xE4ac;</td><td>&#xE4ae;</td><td>&#xE4b0;</td><td>&#xE4b2;</td><td>&#xE4b4;</td><td>&#xE4b6;</td><td>&#xE4b8;</td><td>&#xE4bc;</td><td>&#xE5d2;</td><td>&#xE5de;</td><td>&#xEab4;</td><td>&#xEab5;</td></tr>
+<tr><td>&#xE630;</td><td>&#xE631;</td><td>&#xE636;</td><td>&#xE637;</td><td>&#xE639;</td><td>&#xE63a;</td><td>&#xE63B;</td><td>&#xE830;</td><td>&#xE831;</td><td>&#xE832;</td><td>&#xE83d;</td><td>&#xE83e;</td><td>&#xE83f;</td><td>&#xE840;</td><td>&#xE841;</td><td>&#xE842;</td></tr>
+<tr><td>&#xE220;</td><td>&#xE221;</td><td>&#xE222;</td><td>&#xE223;</td><td>&#xE224;</td><td>&#xE22c;</td><td>&#xE7DA;</td><td>&#xE7D9;</td><td>&#xE68a;</td><td>&#xE610;</td><td>&#xE611;</td><td>&#xE612;</td><td>&#xE613;</td><td>&#xE614;</td><td>&#xE615;</td><td>&#xE616;</td></tr>
+<tr><td>&#xE262;</td><td>&#xE260;</td><td>&#xE261;</td><td>&#xE270;</td><td>&#xE271;</td><td>&#xE272;</td><td>&#xE273;</td><td>&#xE274;</td><td>&#xE275;</td><td>&#xE276;</td><td>&#xE277;</td><td>&#xE278;</td><td>&#xE279;</td><td>&#xE843;</td><td>&#xE844;</td><td>&#xE845;</td></tr>
+</table>
+</div><!--</div>-->      
+
+  
+
+<div id="pitches"><button id="pitchstrum">Strum</button> <button id="pitchclose">OK</button> 
+  <select id="pretune">
+    <option value="0">Standard</option>
+    <option value="1">Drop D</option>
+    <option value="2">Dbl drop D</option>
+    <option value="3">Drop E</option>
+    <option value="4">Open E</option>
+    <option value="5">Open D</option>    
+    <option value="6">Open C</option>
+    <option value="7">Open Cm</option>
+    <option value="8">Open G</option>
+    <option value="9">Open Gm</option>
+    <option value="10">Open C6</option>
+    <option value="11">DADGAD</option>
+    <option value="12">Nashville</option>    
+    <option value="13">NST</option>    
+  </select>+<input type="number" id="capo" value="0"/>
+<table id="pitchtbl"  class="tg">
+<tr><th colspan="3">&nbsp;Match &nbsp;&nbsp;Sound &nbsp; Tuning</th></tr>
+<tr><td contenteditable="true">e|</td><td>E4</td><td contenteditable="true">0</td></tr>     
+<tr><td contenteditable="true">B|</td><td>B3</td><td contenteditable="true">0</td></tr>
+<tr><td contenteditable="true">G|</td><td>G3</td><td contenteditable="true">0</td></tr>
+<tr><td contenteditable="true">D|</td><td>D3</td><td contenteditable="true">0</td></tr>
+<tr><td contenteditable="true">A|</td><td>A2</td><td contenteditable="true">0</td></tr>
+<tr><td contenteditable="true">E|</td><td>E2</td><td contenteditable="true">0</td></tr>
+<tr><td contenteditable="true"></td><td></td><td contenteditable="true">0</td></tr>
+<tr><td contenteditable="true"></td><td></td><td contenteditable="true">0</td></tr>
+<tr><td contenteditable="true"></td><td></td><td contenteditable="true">0</td></tr>
+</table>
+ </div>
+  
+
+
+    </div><!--non-print--> 
+
+    <div id="printThis" >  
+      <button id="editButton" type="button">Edit</button>
+      <div id="sTitle">
+        <div contenteditable="true" spellcheck="false" id="songTitle"></div>
+      </div>
+      
+      <ol id="ctOut"></ol>
+    </div>
+  </div><!--main content-->
+  <div id="bottom">
+    
+    <footer id="foot"><a href="http://colortab.org/" target="_blank" rel="noreferrer noopener">ColorTab.org</a>&nbsp;&nbsp;
+      <a href="http://colortab.org/musicxml/" target="_blank" rel="noreferrer noopener">Import MusicXML</a>
+      <br>&copy; Copyright 2020, Keith Thomas<br>&#x00D0;ownstem &#x00D0;uration</footer>
+  </div>  
+<script id="jScript"></script>
+</body>
+</html>
