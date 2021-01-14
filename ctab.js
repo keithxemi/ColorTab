@@ -1,544 +1,634 @@
-/* jshint browser: true,  esnext: true */
+/*eslint-env es6, browser, amd*/
+/*eslint no-irregular-whitespace: ["error", { "skipRegExps": true }]*/
+/* global Soundfont, offline */
 
-/*eslint-env es6*/ // Enables es6 error checking for that file
-/*eslint-env jquery*/ // Enables error checking for jquery functions
-/*eslint-env browser*/ // Lets you use document and other standard browser functions
-/*eslint no-console: 0*/ // Lets you use console (for example to log something)
-
-(function () {
-  //global variables
-  var keepStrays;
-  var keepSections;
-  var keepMeasures;
-  const keepChords = true; //was var, not in ui
-  var keepStart = false; // include start notes in ct
-  var startChanging = false; //stop showLines from looping
-  var keepSpaces = false;
-  var breakFour;
+(function() {
+  //global variables 
+  var ctNotePos = [];//note positions
+  var measureTimes = [];
+  var measureFirsts = [];//positions of first note in each measure  
+  var pauseTime = 0;//time to play next note on resume
+  var startTime; //ctx.currentTime at play button event
+  var lastTime; //last note scheduled end time  
+  var metronome = false;
+  var defaultTempo = true;
+  var tempos = [];//[[0, 120 or saved value],[tab position, bpm],...]
+  var ptable;//document.getElementById("pitchtbl");
+  var showPitch = false;//show pitch table
+  var capoShift = 0;
+  var pitchShift = ["",0,0,0,0,0,0,0,0,0];//user editable string note shifts
+  var oType = false;//overtype keyup bypass
+  var ctx = new AudioContext();//suspend onload
+  var showButtons = false;//show notes numbers and durations
+  var paused = true;//not playing
+  var playThings = [];//sorted [][pitch, time, duration,id,tab pos]
+  var ctIdPos = {};//tab positions from ids
+  var nextNoteTime = 0.0;//time to play next note
+  var singleThing;//pitch for single note play
+  var playStart = 0; //first note to play
+  var playEnd = 0;//last note to play
+  var selStart = 0;//tab slice selection begin
+  var selEnd = 0;//
+  var loop = false;
+  var secsPerBeat;// = 60 / document.getElementById("tempo").value;   
+  var playTimesDebug;//***************** = document.getElementById('playnotes');  
+  var nP = 0; //play note counter
+  var songLength;//playThings.length
+  var songBeats;//song length in beats
+  var key2 = false; //prevent scroll on Tab2
+  var showNotes = true;
+  var showColors = 2; //tab area appearance 
+  var showTable = 0; //note symbols
+  var keyScroll = false; //prevent scroll from centering after keyup
+  var charWidth = 12.0; //pixel width of characters, use for scroll control
+  var navKey = false; //don't redraw if true
+  var barChars = []; //lengths of lyric bars
+  var barNotes = []; //cum ct notes by bar
+  var measureSums = [];//durations
+  var rolledSums = [];//playcursor hot/cold sums
+  var timesigBeats = [];//timesig beats per measure
+  var barsHidden = 0;
+  var partsHidden = 0;
+  var partChars = [];
+  var charShift = 0; //scroll effect of key events
+  var cursorSplit; //pixels from content left to cursor
+  var extendTail = "                          ."; //hold blank at right edge when scrolled
+  var undoKey = false; //prevent redo from keyup
+  var keepSpaces = true;
+  var keepSections = true;
+  var keepMeasures = true;
+  var oldValue; //key down event tab value
+  var oldPlace; //key down cursor place in px from left window
+  var keyIdentified = false; //true if event keycodes are available at keydown
+  var keyHandled = false; //true if keydown occurs
+  var keysDown = 0; //prevent end of line wrap
+  var songHtml = true; //saveFile mode
+  var tabArea; //document.getElementById("TabIn");
+  var tabArea2; //document.getElementById("TabIn2");  
+  var lyricArea; //document.getElementById("LyricIn");
+  var tuneArea; //document.getElementById("TuneIn");
+  var tuneArea2;
+  var barNumb; //document.getElementById("BarNum"); 
+  var ctabOut; //document.getElementById("ctOut");
+  var tabBack; //document.getElementById("TabBacker");
+  var tuneBack; //document.getElementById("TuneBacker");
+  var lastBlur; //where was I? 
   var showHelp = false;
-  var featureLength = []; //lengths of notes, chords, measures, sections
+  var mainScroll = 0;
+  var helpScroll = 0;
   var tabFound = false; //state result of most recent conversion
   var append = false;
   var ctScale = 1.0; //global font-size for colorTab user settable
-  var ctWidth; //scaled virtual width
   var lines = []; // pasted input split by new lines
   var prevLines = []; //keep for append and undo
   var newLines = []; //append result
   var goodLines = []; // matchStart return
-  var undoLines = []; //undo copy of lines
-  var badLines = []; // might be example for start change
-  var startTab = []; //3x6 arrary of start chars
-    var startTabPos = 0; //what to skip
-    const startCharLen = 3; // max length of start chars
+  var prevHead = [],
+    prevCut = [],
+    prevTail = []; //insert split
+  prevCut[0] = "";
+  var lyrHead = "",
+    lyrCut = "",
+    lyrTail = ""; //insert split 
+
+  var startTab = []; //3xN arrary of start chars
+  var tabStrings = 6; //number of strings in tab
+  var tabSplit = []; //tab split by \n
+  var barFrom = "Tab"; //mode to choose source of measure bars, tab or lyrics
+  var lyricText = ""; //lyricArea value, no tail
+
+  var lyricTextBars = []; //lyrics split
+  var ctBars = []; //measures with parts and bars equivalent
+  var lyricLtrSpace = 0;
+  var startTabPos = 3; //what to skip
+  const startCharLen = 3; // max length of start chars
+  var setSelStart = 0; //set cursor position
+  var setSelEnd = 0; //set cursor position
+  var cursorWhere = 0; //get selectionStart
+  var cursorWhere2 = 0; //get selectionStart TabIn2 
+  var cursorThere = 0; //get selectionEnd
+  var lineLen = 0; //tab line length
+  var cursorPos = 0; // pos % line length
+  var cursorPos2 = 0; // end % length
+  var cursorPlace = 0; //position in pixels
+  var cursorLine = 0; // one of N lines 0-5
+  var cursorLyric = 0; //position in lyric area
   var cT = []; // colortab list items
-  const Itype = 0; //[seq][0] item type iT
-  const Ichar = 1; //[seq][1] character string to display
-  const iT = ["E", "A", "D", "G", "B", "e", "b", "g", "d", "h", "o"];
-  // ColorTab item types
-  const Bar = 6; // "b" measure bar
-  const Gap = 7; // "g" chord separator
-  const Dash = 8; // "d" space -N---N-
-  const Half = 9; // "h" half space -N--N-
-  const Orphan = 10; // "o" stray character
-  var pasteAction = "r"; //replace by default
-  var undoStack = [];
+  const Typ = 0; //[seq][0] item type b bar g gap c chord d dash h half o orphan
+  const Chr = 1; //[seq][1] characters to display
+  const Pos = 2; //[][2] tab column position
+  const Meas = 3; //cT measure from playPrep
+  var strClass = ["s9", "s8", "s7", "s6", "s5", "s4", "s3", "s2", "s1"];//low to high
+  var stringPitch = 
+      {'s6':40, 's5':45, 's4':50, 's3':55, 's2':59, 's1':64}; //midi note offsets  
+  var height2 = "77px"; //black fret numbers in tab2
+  var blackStrings = 3;//tabarea2 size
+  var undoStack = [];//[undoLines, undoLyrics, tabLyr, undoCursor, undoScroll]
   var redoStack = [];
   var undoCount = 0;
   var redoCount = 0;
   var undoing = false;
+  var undoLines = []; //undo copy of lines
+  var undoLyrics = "";  
+  var tabLyr;// = document.activeElement.id; //which text changed
+  var undoCursor;// = (tabLyr === "TabIn") ? cursorWhere : cursorLyric;
+  var undoScroll;// = lyricArea.scrollLeft;  
   var songFile = "";
+  var instrument = "6 Guitar";  
 
-  function pasteMode() {
-    if (document.getElementById("newPaste").checked) {pasteAction = "r"; }
-    if (document.getElementById("addPaste").checked) {pasteAction = "a"; }
-    if (document.getElementById("editPaste").checked) {pasteAction = "m"; }
-  }
+  var colors = ["","#ffffff","#ffdc00","#3cc8f4","#1eb24b","#d72028","#0a50a0","#773c1c","#ff00ff","#444444"];  
+
+  const thin = String.fromCharCode(8201); //&#x2009; 4px
+  const musicSym =/[\xb2\xb3\xb9\u2070-\uf5fa]/;
   
+  const noteUpDurations = {"\uE1d2":4,"\uECA1":3,"\uE1d3":2,"\uECA3":1.5,"\uE1d5":1,"\uECA5":0.75,"\uE1d7":0.5,"\uECA7":0.375,"\uE1d9":0.25,"\uE1db":0.125,"\uE1dd":0.015625,"\uE1df":0.0078125,"\uE1e1":0.00390625,"\uE560":0,"\uEcad":0.75,"\uE1F3":0.5,"\uEcae":0.375,"\uE1F5":0.25,"\uE1F6":0.125};  
+  
+  const noteDnDurations = {"\uE1D4":2,"\uE1D6":1,"\uE1D8":0.5,"\uE1DA":0.25,"\uE1DC":0.125,"\uEca2":3,"\uEca4":1.5,"\uEca6":0.75,"\uEca8":0.375,"\uE1de":0.015625,"\uE1e0":0.0078125,"\uE1e2":0.00390625,"\uE561":0};  
+
+  const restDurations = {"\uE4F4":4,"\uEcaf":3,"\uE4F5":2,"\uEcb0":1.5,"\uE4E5":1,"\uEcb1":0.75,"\uE4E6":0.5,"\uEcb2":0.375,"\uE4E7":0.25,"\uE4E8":0.125,"\uE4e9":0.0625,"\uE4ea":0.03125,"\uE4eb":0.015625}
+
+  const beamSymbols = /[\uE1Fb\uE1Fa\uE1F8\uEcac\uEcab\uE1d5\uEcad\uE1F3\uEcae\uE1F5\uE1F6]/; //must include quarter note for html spacing
+
+  const beamDurations = {"\uEcad":0.75,"\uE1F3":0.5,"\uEcae":0.375,"\uE1F5":0.25,"\uE1F6":0.125,"\uE1Fb":0.125,"\uE1Fa":0.25,"\uEcac":0.375,"\uE1F8":0.5,"\uEcab":0.75};//include beams and notes to use with quarter note as beam start 
+
+  const fermatas = {"\uE4c0":2,"\uE4c2":1.25,"\uE4c4":1.5,"\uE4c6":3,"\uE4c8":4,"\uE4cA":3,"\uE4cc":1.5} 
+
+  const dotDurations = {"\uE1Fc":1.5,"\uEcb6":1.5,"\uEcab":1.5,"\uEcac":1.5,};
+
+  const dottedUpNotes = {
+  "\uECA1":3,"\uECA3":1.5,"\uECA5":0.75,"\uECA7":0.375,"\uEcad":0.75,"\uEcae":0.375,"\uEcaf":	3,"\uEcb0":1.5,"\uEcb1":0.75,"\uEcb2":0.375}; 
+  
+  const dottedDnNotes = {
+  "\uEca2":3,"\uEca4":1.5,"\uEca6":	0.75,"\uEca8":0.375}
+  
+  const dottedRestDurations = {"\uEcaf":3,"\uEcb0":1.5,"\uEcb1":0.75,"\uEcb2":0.375}
+  
+  const timeSigBeats = {"\uf5f3":4,"\uf5ee":2,"\uf5ef":4,"\uf5f0":6,"\uf5f1":3,"\uf5f2":1.5,"\uf5f4":5,"\uf5f5":2.5,"\uf5f6":6,"\uf5f7":3,"\uf5f8":3.5,"\uf5f9":4.5,"\uf5fa":6}
+  
+  const noteNames = {21:"A0",22:"A#0",23:"B0",24:"C1",25:"C#1",26:"D1",27:"D#1",28:"E1",29:"F1",30:"F#1",31:"G1",32:"G#1",33:"A1",34:"A#1",35:"B1",36:"C2",37:"C#2",38:"D2",39:"D#2",40:"E2",41:"F2",42:"F#2",43:"G2",44:"G#2",45:"A2",46:"A#2",47:"B2",48:"C3",49:"C#3",50:"D3",51:"D#3",52:"E3",53:"F3",54:"F#3",55:"G3",56:"G#3",57:"A3",58:"A#3",59:"B3",60:"C4",61:"C#4",62:"D4",63:"D#4",64:"E4",65:"F4",66:"F#4",67:"G4",68:"G#4",69:"A4",70:"A#4",71:"B4",72:"C5",73:"C#5",74:"D5",75:"D#5",76:"E5",77:"F5",78:"F#5",79:"G5",80:"G#5",81:"A5",82:"A#5",83:"B5",84:"C6",85:"C#6",86:"D6",87:"D#6",88:"E6",89:"F6",90:"F#6",91:"G6",92:"G#6",93:"A6",94:"A#6",95:"B6",96:"C7",97:"C#7",98:"D7",99:"D#7",100:"E7"}
+  
+  const subscripts = {"\u2080":0,"\u2081":1,"\u2082":2,"\u2083":3,"\u2084":4,"\u2085":5,"\u2086":6,"\u2087":7,"\u2088":8,"\u2089":9}
+  
+  const superscripts = {"\u2070":0,"\u00B9":1,"\u00B2":2,"\u00B3":3,"\u2074":4,"\u2075":5,"\u2076":6,"\u2077":7,"\u2078":8,"\u2079":9}
+  const superRegex = /[\u00B2\u00B3\u00B9\u2070\u2074-\u2079]/;
+
+  function newStrings(us) {
+    var strings = []; //HIGH TO LOW top to bottom
+    append = false; //forget old parts
+    //startChars
+    switch (us) {
+      case "4 Bass":
+        strings = [" G|", " D|", " A|", " E|"];
+        strClass = ["s6", "s5", "s4", "s3", "", "", "", "", ""];
+        stringPitch = {'s6':28, 's5':33, 's4':38, 's3':43};        
+        height2 = "22px";
+        blackStrings = 1;
+        break;
+      case "4 Mandolin":
+        strings = [" E|", " A|", " D|", " G|"];
+        strClass = ["s6", "s5", "s4", "s3", "", "", "", "", ""];
+        stringPitch = {'s6':[55,55.05], 's5':[62,62.07], 's4':[69,69.1], 's3':[76,76.1]};
+                          //G3       D4       A4       E5         
+        height2 = "22px";
+        blackStrings = 1;        
+        break;
+      case "4 Ukulele":
+        strings = [" A|", " E|", " C|", " g|"];
+        strClass = ["s6", "s5", "s4", "s3", "", "", "", "", ""];
+        stringPitch = {'s6':67, 's5':60, 's4':64, 's3':69};
+                          //G4       C4       E4       A4      
+        height2 = "22px";
+        blackStrings = 1;        
+        break;
+      case "5 Banjo":
+        strings = [" d|", " B|", " G|", " D|", " g|"];
+        strClass = ["s6", "s5", "s4", "s3", "s2", "", "", "", ""];
+        stringPitch = {'s6':67, 's5':50, 's4':55, 's3':59, 's2':62};
+        //                  G4       D3       G3       B3       D4
+        height2 = "48px";
+        blackStrings = 2;        
+        break;
+      case "5 Cuatro":
+        strings = [" G|", " D|", " A|", " E|", " B|"];
+        strClass = ["s6", "s5", "s4", "s3", "s2", "", "", "", ""];
+        stringPitch = 
+          {'s6':[47,59.01], 's5':[52,64.02], 's4':[57,57.04], 's3':[62,62.05], 's2':[67,67.06]};
+        height2 = "48px";
+        blackStrings = 2;        
+        break;
+      case "5 Bass":
+        strings = [" G|", " D|", " A|", " E|", " B|"];
+        strClass = ["s6", "s5", "s4", "s3", "s2", "", "", "", ""];
+        stringPitch = {'s6':23, 's5':28, 's4':33, 's3':38, 's2':43};        
+        height2 = "48px";
+        blackStrings = 2;        
+        break;
+      case "6 Bass":
+        strings = [" C|", " G|", " D|", " A|", " E|", " B|"];
+        strClass = ["s6", "s5", "s4", "s3", "s2", "s1", "", "", ""];
+        stringPitch = {'s6':23, 's5':28, 's4':33, 's3':38, 's2':43, 's1':48};        
+        height2 = "77px";
+        blackStrings = 3;        
+        break;
+      case "6 Guitar":
+        strings = [" e|", " B|", " G|", " D|", " A|", " E|"];//h-l
+        strClass = ["s6", "s5", "s4", "s3", "s2", "s1", "", "", ""];//l-h
+        stringPitch = {'s6':40, 's5':45, 's4':50, 's3':55, 's2':59, 's1':64};
+        height2 = "77px";
+        blackStrings = 3;        
+        break;
+      case "7 Guitar":
+        strings = [" e|", " b|", " G|", " D|", " A|", " E|", " B|"];
+        strClass = ["s7", "s6", "s5", "s4", "s3", "s2", "s1", "", ""];
+        stringPitch = {'s7':35, 's6':40, 's5':45, 's4':50, 's3':55, 's2':59, 's1':64};
+        height2 = "77px";
+        blackStrings = 3;        
+        break;
+      case "8 Guitar":
+        strings = [" e|", " b|", " G|", " D|", " A|", " E|", " B|", "F#|"];
+        strClass = ["s8", "s7", "s6", "s5", "s4", "s3", "s2", "s1", ""];
+        stringPitch =
+          {'s8':30, 's7':35, 's6':40, 's5':45, 's4':50, 's3':55, 's2':59, 's1':64};        
+        height2 = "77px";
+        blackStrings = 3;        
+        break;
+      case "9 Guitar":
+        strings = [" e|", " b|", " G|", " D|", " A|", " E|", " B|", "F#|", "C#|"];
+        strClass = ["s9", "s8", "s7", "s6", "s5", "s4", "s3", "s2", "s1"];
+        stringPitch = 
+          {'s9':25, 's8':30, 's7':35, 's6':40, 's5':45, 's4':50, 's3':55, 's2':59, 's1':64};
+        height2 = "77px";
+        blackStrings = 3;        
+        break;
+      case "12 Guitar":
+        strings = [" e|", " B|", " G|", " D|", " A|", " E|"];//h-l
+        strClass = ["s6", "s5", "s4", "s3", "s2", "s1", "", "", ""];//l-h
+        stringPitch = {'s6':[40,52.01], 's5':[45,57.01], 's4':[50,62.05], 's3':[55,55.04], 's2':[59,59.07], 's1':[64,64.1]};
+        height2 = "77px";
+        blackStrings = 3;        
+        break;        
+      default:
+        strings = [" e|", " B|", " G|", " D|", " A|", " E|"];
+        document.getElementById("numStrings").value = 6;
+    }
+    return strings;
+  }
+
+  function pasteTab(paste) {
+    if (typeof(paste) === 'object') {
+      paste = (event.clipboardData || window.clipboardData).getData("text");
+      event.preventDefault();
+    }
+    locateTabCursor();
+    tabArea.value = "";
+    tabArea.value = paste;
+    tabArea2.value = tabArea.value;
+    prevLines = lines.slice();
+    if (prevLines.length !== tabStrings) { // fallback to empty array
+      prevLines = " ".repeat(tabStrings - 1).split(" ");
+      lines = prevLines.slice();
+    }
+    newLines = tabArea.value.replace(/(\r\n|\n|\r)/gm, "\n").split("\n");
+    if (lines[0].length <  1) { //empty
+      append = false;
+      undoing = false;
+      findTab();
+    } else {
+      for (var i = 0; i < tabStrings; i++) { //separate sections
+        prevHead[i] = prevLines[i].slice(0, cursorPos);
+        prevTail[i] = prevLines[i].slice(cursorPos);
+      }
+      append = true;
+      undoing = false;
+      findTab();
+    }
+  }  
+
   function findTab() { //for paste or file
-    var  j;
+    var j;
     doStuff();
     matchStart(newLines); // match goodlines to start pattern
     if (append && tabFound) {
-      for (j = 0; j < 6 ; j++) {
-        lines[j] = prevLines[j].concat(goodLines[j].slice(startCharLen));
+      for (j = 0; j < tabStrings; j++) {
+        lines[j] = prevHead[j] + goodLines[j] + prevTail[j];
       }
-    }
-    else lines = goodLines.slice();
+    } else lines = goodLines.slice();
     showLines();
     convertTab();
   }
- 
-  function getTabIn() { //use text box content
-    var j;
+  
+  function matchStart(lines) {
+    var i, j, k, m;
+    var matchedLengths;
+    var matches;
+    var goodLength;
+    goodLines = [];
+    for (j = 0; j < tabStrings; j++) {
+      goodLines[j] = "";
+    }
+    var lineSt = ""; //first three line chars without spaces
+    var startSt = ""; //first chars of string without spaces
+    var slice = [];
+    var barLines = "";
+    var dashCol = "";
+    for (i = 0; i < tabStrings; i++) {
+      barLines += "|";
+      dashCol += "-";
+    }
+    for (i = 0; i < lines.length; i++) {
+      matches = 0;
+      matchedLengths = [];
+      goodLength = lines[i].length;
+      for (j = 0; j < tabStrings; j++) {
+        if (lines[i + j]) { // if defined
+          lineSt = lines[i + j].split(" ").join("").slice(0, 3);
+          startSt = startTab[j].split(" ").join(""); //no spaces
+          m = 0; // character matches
+          if (lineSt.length > 2) { // skip short lines
+            for (k = 0; k < startSt.length; k++) //each start character
+              if (lineSt[k].toUpperCase() === startSt[k].toUpperCase()) m++;
+          } else break; //short line
+          if (m === startSt.length) { //matched a line
+            matches += 1;
+            matchedLengths[j] = lines[i + j].length;
+            if (matchedLengths[j - 1] &&
+              (matchedLengths[j] < matchedLengths[j - 1]))
+              goodLength = lines[i + j].length; //get shortest length
+          } // line matches
+        } //defined
+      } //set of tabStrings
+      if (matches === tabStrings) {
+        for (k = 0; k < 4; k++) { //find start position to show
+          slice[k] = "";
+          for (j = 0; j < tabStrings; j++) {
+            slice[k] += lines[i + j][k];
+          }
+          if (slice[k] === barLines) break; //prefer bar
+          if (slice[k] === dashCol) break; //settle for dashes
+        }
+        if (k > 3) {
+          k = 3; //use last possible position regardless
+        }
+        startTabPos = k + 1; //skip start in convertTab
+        for (j = 0; j < tabStrings; j++) { //truncate to goodlength
+          // make sections if needed
+          if (lines[i + j].slice(2, 3) !== "|") goodLines[j] += "|";
+          if (lines[i + j].slice(1, 2) !== "|" && startTab[j][2] === "|" ) 
+            goodLines[j] += "|";
+          goodLines[j] += lines[i + j].slice(startTabPos, goodLength);
+        }
+        i += tabStrings - 1;
+      }
+    }
+    tabFound = (goodLines[0].length > 0) ? true : false;
+    if (tabFound) return;
+    var getDblStart = []; // if fail then try doublespaced matching
+    for (j = 0; j < tabStrings; j++) {
+      getDblStart[2 * j] = startTab[j];
+      getDblStart[2 * j + 1] = "";
+    }
+    for (i = 0; i < lines.length; i++) {
+      matches = 0;
+      matchedLengths = [];
+      goodLength = lines[i].length;
+      for (j = 0; j < tabStrings * 2; j += 2) {
+        if (lines[i + j]) { // if defined
+          lineSt = lines[i + j].split(" ").join("").slice(0, 3);
+          startSt = getDblStart[j].split(" ").join(""); //no spaces
+          m = 0; // character matches
+          if (lineSt.length > 2) { // skip short lines
+            for (k = 0; k < startSt.length; k++) //each start character
+              if (lineSt[k].toUpperCase() === startSt[k].toUpperCase()) m++;
+          } else break; //short line
+          if (m === startSt.length) { //matched a line
+            matches += 1;
+            matchedLengths[j] = lines[i + j].length;
+            if (matchedLengths[j - 1] &&
+              (matchedLengths[j] < matchedLengths[j - 1]))
+              goodLength = lines[i + j].length; //get shortest length
+          } // line matches
+        } //defined
+      } //set of tabStrings
+      if (matches === tabStrings) {
+        for (k = 0; k < 4; k++) { //find start position to show
+          slice[k] = "";
+          for (j = 0; j < tabStrings * 2; j += 2) {
+            slice[k] += lines[i + j][k];
+          }
+          if (slice[k] === barLines) break; //prefer bar
+          if (slice[k] === dashCol) break; //settle for dashes
+        }
+        if (k > 3) {
+          k = 3; //use last possible position regardless
+        }
+        startTabPos = k + 1; //skip start in convertTab
+        for (j = 0; j < tabStrings; j++) { //truncate to goodlength
+          // make sections if needed
+          if (lines[i + j * 2].slice(2, 3) !== "|") goodLines[j] += "|";
+          if (lines[i + j * 2].slice(1, 2) !== "|" && startTab[j][2] === "|" )
+            goodLines[j] += "|";
+          goodLines[j] += lines[i + j * 2].slice(startTabPos, goodLength);
+        }
+        i += tabStrings * 2 - 2;
+      }
+    }
+    tabFound = (goodLines[0].length > 0) ? true : false;
+    if (tabFound) return;
+    goodLines = prevLines.slice();
+  } // find lines that match start  
+
+  function getTabIn() { //reconvert text box content
     noDownlink();
     doStuff();
     lines = [];
-    lines = document.getElementById("TabIn").value.split("\n");
+    lines = tabArea.value.split("\n");
+    if (lines.length < tabStrings) return;
+    if (keyIdentified) checkExtend();
     tabFound = true;
-     if (append) for (j = 0; j < 6; j++) {
-      lines[j] = lines[j].slice(startCharLen);
-      lines[j] += lines[j];
-      lines[j] = startTab[j] + lines[j];
-    }
     showLines();
     convertTab();
   }
   
-  function checkChange() {
+  function trimTail(t) {
+    if (t && t.slice(t.length - 1) === ".") t = t.slice(0, t.length - 1).trimRight();
+    return t;
+  }
+  
+  function checkExtend() {//match line lengths if extended
+    var j, len, ext;
+    lines[0] = lines[0].trimRight();
+    len = lines[0].length;
+    lines[tabStrings - 1] = trimTail(lines[tabStrings - 1]);
+    for (j = 1; j < tabStrings; j++) {
+      lines[j] = lines[j];
+      if (lines[j].length > len) {
+        len = lines[j].length;
+        ext = true;
+      }
+    }
+    for (j = 0; j < tabStrings; j++) { //pad with dashes
+      lines[j] = lines[j].padEnd(len, "-");
+    }
+    if (ext) {
+      setSelStart = cursorWhere + 1 + cursorLine;
+      setSelEnd = setSelStart;
+    }
+  }
+
+  function checkChange() { //convert - no undo
     noDownlink();
     lines = [];
-    lines = document.getElementById("TabIn").value.split("\n");
+    if (!tabArea.value) {
+      tabArea.value = "\n".repeat(tabStrings - 1) + extendTail;
+      tabArea2.value = tabArea.value;
+    }    
+    lines = tabArea.value.split("\n");
     tabFound = true;
     showLines();
     convertTab();
   }
   
-  function appendCT() {
-    append = true;
-    undoing = false;
-    getTabIn();
-  }
-  
-  function scaleUp() {
-    ctScale = ctScale/0.95;
-    document.getElementById("ctOut").style.width =
-      1/ctScale*100 + "%";
-    document.getElementById("ctOut").style.transform =
-      "scale(" + ctScale + ")";
-    findLengths();
-  }
-  
-  function scaleDn(){
-    ctScale = 0.95 * ctScale;
-    document.getElementById("ctOut").style.width =
-      1/ctScale*100 + "%";
-    document.getElementById("ctOut").style.transform =
-      "scale(" + ctScale + ")";
-    findLengths();
-  }
-  
-  function help(){
-    var empty;
-    if (!showHelp) {
-    document.getElementById("helpText").setAttribute("class", "show");
-    document.getElementById("nonPrint").setAttribute("class", "hide");
-    document.getElementById("printThis").setAttribute("class", "hide");
-    showHelp = true;
+  function showLines() { // replace textarea with processed tab
+    if (lines.length < 1) tabFound = false; //empty
+    var i, showText = "";
+    if (!tabFound && !undoing) {
+      noTab();
     }
-    else {
-    document.getElementById("helpText").setAttribute("class", "hide");
-    document.getElementById("nonPrint").setAttribute("class", "show");
-    document.getElementById("printThis").setAttribute("class", "show");
-    showHelp = false;
-    empty = document.getElementById("TabIn").value.length;
-    if (empty < 25) greenSleeves();
-    document.documentElement.scrollTop = 0;
-    }
-  }
-  
-  function undo(){
-    if (undoCount < 1) {
-      lines = [];
-      document.getElementById("TabIn").value = "";
-      document.getElementById("ctOut").innerHTML = "";
+    if (lines.length < 1) {
+      tabArea.value = "";
+      tabArea2.value = "";
+      ctabOut.innerHTML = "";
       return;
     }
-    redoCount = redoStack.push(lines);
-    redoColor();
-    lines = [];
-    lines = undoStack.pop();
-    undoCount = undoStack.length;
-    undoColor();
-    append = false;
-    undoing = true;
-    tabFound = true;
-    showLines();
-    convertTab();
-  }
-  
-  function undoColor() {
-    var bckClass;
-    bckClass = document.getElementById("bck");
-   if (undoCount < 1) bckClass.setAttribute("class", "gray");
-    else bckClass.setAttribute("class", "black");
-  }
-  
-  function redoColor() {
-    var fwdClass;
-    fwdClass = document.getElementById("fwd");
-   if (redoCount < 1) fwdClass.setAttribute("class", "gray");
-    else fwdClass.setAttribute("class", "black");
-  }
-  
-  function redo() {
-    if (redoCount < 1) return;
-    undoLines = lines.slice();
-    undoCount = undoStack.push(undoLines);
-    undoColor();
-    lines = [];
-    undoLines = redoStack.pop();
-    lines = undoLines.slice();
-    redoCount = redoStack.length;
-    redoColor();
-    tabFound = true;
-    showLines();
-    convertTab();
-  }
-  
-  function doStuff() {
-    if (undoing) return;
-    redoStack = [];
-    redoCount = 0;
-    redoColor();
-    undoLines = lines.slice();
-    undoCount = undoStack.push(undoLines);
-    undoColor();
-  }
-   
-  function doOnLoad() {
-    var ctW = document.getElementById("ctOut");
-    ctWidth = parseFloat(window.
-       getComputedStyle(ctW).getPropertyValue("width"));
-    // initial string names for startTab
-    document.getElementById("TabIn").value = stringNames();
-    // assign ui click functions
-    document.getElementById("append").onclick = appendCT;
-    document.getElementById("bigger").onclick = scaleUp;
-    document.getElementById("smaller").onclick = scaleDn;
-    document.getElementById("newPaste").onclick = pasteMode;
-    document.getElementById("addPaste").onclick = pasteMode;
-    document.getElementById("editPaste").onclick = pasteMode;
-    document.getElementById("helpButton").onclick = help;
-    document.getElementById("helpText").onclick = help;
-    document.getElementById("bck").onclick = undo;
-    document.getElementById("fwd").onclick = redo;
-    document.getElementById("dFile").onclick = downloadFile;
-    document.getElementById("dTxt").onclick = downloadText;
-    // change events
-    document.getElementById("songTitle").onchange = noDownlink;
-    document.getElementById("TabIn").onchange = noDownlink;
-    document.getElementById("kSpaces").onchange = checkChange;
-    document.getElementById("kStrays").onchange = checkChange;
-    document.getElementById("brkFour").onchange = checkChange;
-    document.getElementById("kStart").onchange = checkChange;
-    document.getElementById("kParts").onchange = checkChange;
-    document.getElementById("kMeasures").onchange = checkChange;
-    // paste event handler
-    const target = document.getElementById("TabIn");
-    target.addEventListener("paste", (event) => {
-      let paste = (event.clipboardData || window.clipboardData).getData("text");
-      if (pasteAction === "r") {
-        document.getElementById("TabIn").value = "";
-        document.getElementById("TabIn").value = paste;
-        append = false;
-        prevLines = lines.slice();
-        newLines = document.getElementById("TabIn").
-        value.replace(/\r\n/g, "\n").split("\n"); //keep empty lines
-        undoing = false;
-        findTab();
-      }
-      if (pasteAction === "a") {
-        document.getElementById("TabIn").value = "";
-        document.getElementById("TabIn").value = paste;
-        append = true;
-        prevLines = lines.slice();
-        newLines = document.getElementById("TabIn").
-        value.replace(/\r\n/g, "\n").split("\n"); //keep empty lines
-        undoing = false;
-        findTab();
-      }
-      if (pasteAction !== "m") {event.preventDefault();}
-    });
-    
-    window.addEventListener("resize", findLengths);
-    
-    const fin = document.getElementById("chooseFile");
-     fin.addEventListener("change", function(){
-        readFile(this.files[0], function(e) {
-          var text = e.target.result;
-          document.getElementById("TabIn").value = "";
-          document.getElementById("TabIn").value = text;
-          document.getElementById("ctOut").innerHTML = "";
-          append = false;
-          newLines = document.getElementById("TabIn").
-          value.replace(/\r\n/g, "\n").split("\n"); //keep empty lines
-          undoing = false;
-          findTab();
-          document.getElementById("songTitle").value = songFile;
-        });
-       songFile = this.files[0].name;
-    });
-//deprecated!!
-    target.addEventListener("keydown", function(event) {
-      //console.log(event.keyCode)
-      if (event.keyCode === 13) event.preventDefault(); //enter
-      else if (event.keyCode === 46) delSix(target); //delete
-      else if (event.keyCode === 45) insSix(target); //insert
-      else if (event.keyCode === 220) insBar(target); // measure |
-      else if (event.keyCode === 8) bkspSix(target); //backspace
-      else if (event.keyCode === 89) redo(); // ctrl-y
-      else if (event.keyCode === 90) undo(); //ctrl-z
-      else if (event.keyCode !== 37) { //left arrow
-        var where = target.selectionStart;
-        target.setSelectionRange(where,where + 1);
-      }
-    });
-    
-   target.addEventListener("keyup", function() {
-      getTabIn(); //push undo
-    });
-    
-  } //event handlers
-  
-  function delSix(t){
-    //delete on six lines with 46 del
-        var where;
-        var tabSplit = [];
-        var tabD = [];
-        var tabDel = "";
-        var lineLen;
-        var pos;
-        var lineShrink;
-        var i;
-        event.preventDefault();
-        where = t.selectionStart;
-        tabSplit = t.value.split("\n");
-        lineLen = tabSplit[5].length;
-        pos = where % (lineLen + 1);
-        lineShrink = Math.floor(where/lineLen);
-        for (i=0;i<6;i++) {
-          tabD[i] =
-            tabSplit[i].slice(0,pos) + tabSplit[i].slice(pos + 1);
-          if (i<5)tabDel += tabD[i] + "\n";
-          else tabDel += tabD[i];
-        }
-        t.value = tabDel;
-        t.setSelectionRange(where - lineShrink, where - lineShrink);
-  }
-  
-  function bkspSix(t){
-    //delete on six lines with 8 backspace
-        var where;
-        var tabSplit = [];
-        var tabD = [];
-        var tabDel = "";
-        var lineLen;
-        var pos;
-        var lineShrink;
-        var i;
-        event.preventDefault();
-        where = t.selectionStart;
-        tabSplit = t.value.split("\n");
-        lineLen = tabSplit[5].length;
-        pos = where % (lineLen + 1);
-        lineShrink = Math.floor(where/lineLen);
-        for (i=0;i<6;i++) {
-          tabD[i] =
-            tabSplit[i].slice(0,pos - 1) + tabSplit[i].slice(pos);
-          if (i<5)tabDel += tabD[i] + "\n";
-          else tabDel += tabD[i];
-        }
-        t.value = tabDel;
-        t.setSelectionRange(where - lineShrink - 1, where - lineShrink - 1);
-  }
-  
-  function insSix(t){
-    //insert six - lines with 45 ins
-        var where;
-        var tabSplit = [];
-        var tabD = [];
-        var tabDel = "";
-        var lineLen;
-        var pos;
-        var lineShrink;
-        var i;
-        event.preventDefault();
-        where = t.selectionStart;
-        tabSplit = t.value.split("\n");
-        lineLen = tabSplit[5].length;
-        pos = where % (lineLen + 1);
-        lineShrink = Math.floor(where/lineLen);
-        for (i=0;i<6;i++) {
-          tabD[i] =
-            tabSplit[i].slice(0,pos) + "-" + tabSplit[i].slice(pos);
-          if (i<5)tabDel += tabD[i] + "\n";
-          else tabDel += tabD[i];
-        }
-        t.value = tabDel;
-        t.setSelectionRange(where + lineShrink, where + lineShrink);
-  }
-  
-  function insBar(t){
-    //insert six | lines with shift 220, or just overtype backslah
-    var where;
-    var tabSplit = [];
-    var tabD = [];
-    var tabDel = "";
-    var lineLen;
-    var pos;
-    var lineShrink;
-    var i;
-    if (!event.shiftKey) { //backslash
-      where = t.selectionStart;
-      t.setSelectionRange(where,where + 1);
+    for (i = 0; i < lines.length - 1; i++) {
+      showText += lines[i] + "\n";
     }
-    else { //measure bar
-      event.preventDefault();
-      where = t.selectionStart;
-      tabSplit = t.value.split("\n");
-      lineLen = tabSplit[5].length;
-      pos = where % (lineLen + 1);
-      lineShrink = Math.floor(where/lineLen);
-      for (i=0;i<6;i++) {
-        tabD[i] =
-          tabSplit[i].slice(0,pos) + "|" + tabSplit[i].slice(pos);
-        if (i<5)tabDel += tabD[i] + "\n";
-        else tabDel += tabD[i];
-      }
-      t.value = tabDel;
-      t.setSelectionRange(where + lineShrink, where + lineShrink);
+    lines[lines.length - 1] = trimTail(lines[lines.length - 1]);
+    showText += lines[lines.length - 1] + extendTail; // no line break on last line
+    tabArea2.value = showText;
+    tabArea.value = showText;
+    if (barFrom === "Lyr" || barFrom === "Off") moveLyricBars();
+    if (barFrom === "Tab" && !undoKey) lyricBarsFromTab();
+    keepScrollPlace();  
+  } // display tab in input box 
+  
+  function keepScrollPlace() {
+    if (key2) {
+      tabArea2.focus();
+      tabArea2.scrollTop = 0;
+      tabArea2.scrollLeft = tabArea.scrollLeft;      
+      key2 = false;
     }
+    keyScroll = true;
+    if (document.activeElement.id === "TabIn") {
+      tabArea.setSelectionRange(setSelStart, setSelEnd);
+      lyricArea.scrollLeft = Math.round(cursorSplit - oldPlace + (charWidth * charShift));
+    }
+    if (document.activeElement.id === "TabIn2") {
+      tabArea2.setSelectionRange(setSelStart, setSelEnd);
+      lyricArea.scrollLeft = Math.round(cursorSplit - oldPlace + (charWidth * charShift));
+    }    
+    if (document.activeElement.id === "LyricIn") {
+      lyricArea.setSelectionRange(cursorLyric, cursorLyric);
+/*      lyricArea.scrollLeft = Math.round((cursorLyric+charShift)/lyricArea.value.length *
+        lyricArea.scrollWidth - oldPlace + (charWidth * charShift));//bad idea??? **** */     
+    }
+    charShift = 0;
   }
   
-  function readFile(file, onLoadCallback){
-      var reader = new FileReader();
-      reader.onload = onLoadCallback;
-      reader.readAsText(file);
-  }
+  function noTab() {
+    var msg = `<h2>No Tab Found</h2><p>String notes or starting
+characters don't match.
 
-  function noDownlink()  {
-    var oldLink = document.getElementById("out").querySelector("a");
-    if (oldLink) {
-      window.URL.revokeObjectURL(oldLink.href);
-      document.getElementById("out").value = "";
-    }
-  }
+Change the starting characters
+to match the stave format lines.
 
-  function downloadFile() {
-    var ctInner, head, tail, page, song, bTab;
-    noDownlink();
-    var fn = document.getElementById("songTitle").value; //filename
-    if (fn === "") fn = "song";
-    fn = fn + ".html";
-    head = pageHead();
-    tail = pageTail();
-    song = document.getElementById("songTitle").value;
-    ctInner = document.getElementById("ctOut").outerHTML;
-    page = head.concat(song, "</textarea></div>", ctInner, tail);
-    bTab = new Blob([page], {type: "text/html"});
-    var a = document.createElement("a");
-    a.download = fn;
-    a.href = window.URL.createObjectURL(bTab);
-    a.textContent = "Download";
-    a.setAttribute("class", "downlink");
-    document.getElementById("out").appendChild(a);
-    a.onclick = function() {setTimeout(function() {noDownlink();}, 1000);
-    };
-  }
-  
-  function downloadText() {
-    var bTab;
-    noDownlink();
-    var fn = document.getElementById("songTitle").value; //filename
-    if (fn === "") fn = "song";
-    fn = fn + ".txt";
-    bTab = new Blob([document.getElementById("TabIn").value], {type: "text/html"});
-    var a = document.createElement("a");
-    a.download = fn;
-    a.href = window.URL.createObjectURL(bTab);
-    a.textContent = "Download";
-    a.setAttribute("class", "downlink");
-    document.getElementById("out").appendChild(a);
-    a.onclick = function() {setTimeout(function() {noDownlink();}, 1000);
-    };
-  }
-  
-  window.onload = doOnLoad;
+Could not match this as tab:</p>`
+    document.getElementById("message").innerHTML = msg + newLines.join("\n");
+    document.getElementById("msgdiv").style.display = "block";
+    document.getElementById("msgdiv").focus();
+  }  
 
   function convertTab() {
-    var i, j, k;
-    var slices = [];
+    var i, j, k, n;
     var sum; // number of notes in same slice
     var dashes;
+    var blanks; //not spaces, empty slices from lyric edits
     var alerted = false; // prevent repeated alerts
-    if (document.getElementById("kSpaces").checked) {keepSpaces = true;}
-    else keepSpaces = false;
-    if (!append && !undoing)
-      document.getElementById("songTitle").value = "";
     if (!tabFound) return; // give up
-    var tab = [];
-    const n = 0; //note part of tab array
-    const orph = 1; //orphan part of tab
-    const sliceType = 6; // chord or space
-    tab[n] = [];
-    tab[orph] = [];
-    var tabLength = lines[0].length;
+    var tab = []; //2d array of tab chars [slice][string] 
+    var colType = []; // chord or space
+    var orph = []; //2d array orphans = non-digit chars with no note nearby
+    var tabLength = lines[0].length + startCharLen;
+    var barLines = "";
+    goodLines = [];
+    for (j = 0; j < tabStrings; j++) {
+      goodLines[j] = startTab[j].padStart(startCharLen) + lines[j]; //always same length
+    }
+    for (j = 0; j < tabStrings; j++) { //get two character string notes in right order
+      if (goodLines[j][0] === " ") {
+        goodLines[j] = goodLines[j].slice(1,2) + " " + goodLines[j].slice(2);
+      }
+      if (goodLines[j][0] === " " && goodLines[j][1] === " ") {
+        goodLines[j] = " _" + goodLines[j].slice(2);
+      }
+    }
+    for (i = 0; i < tabStrings; i++) barLines += "|";//create a measure bar
     for (i = 0; i < tabLength; i++) {
-      tab[n][i] = [];
-      tab[orph][i] = [];
-      for (j = 0; j < 6; j++) {
-        tab[n][i][j] = "";
-        tab[orph][i][j] = false; // all orphans at first
+      tab[i] = [];
+      orph[i] = [];
+      for (j = 0; j < tabStrings; j++) {
+        tab[i][j] = goodLines[tabStrings - 1 - j][i]; //bottom to top string order
+        orph[i][j] = false; // all orphans at first
       }
-    } // intialize tab
-    var skip; // skip start slices
-    if (document.getElementById("kStart").checked) {keepStart = true;}
-    else keepStart = false;
-    if (keepStart) skip = 0;
-    else skip = startTabPos + 1;
-    for (i = 0; i < tabLength - skip; i++) {
-      slices[i] = "";
-      for (j = lines.length - 1; j >= 0; j--) { //bottom to top string order
-        slices[i] += lines[j][i + skip];
-      }
-      tab[n][i] = slices[i].split("");
-      if (slices[i].search(/[|]/) >= 0 && !alerted)
-        if (slices[i] !== "||||||") {
-          window.alert("Measure |\"s not aligned");
+      if (/[|]/.test(tab[i][1]) && !alerted && keepMeasures) {
+        if (tab[i].join("") !== barLines) {
+          barsNg(i);
           alerted = true;
         }
-    } // create slices
-
-    for (i = 0; i < tabLength; i++) { //for each starting position
-      for (j = 0; j < 6; j++) { // for each guitar string
-        if (tab[n][i][j].search(/[\s=]/) >= 0) tab[n][i][j] = "-"; //dash for space or equals
+      }
+    }
+    for (i = 0; i < tabLength; i++) { //for each column position
+      n = i + 1;//next      
+      for (j = 0; j < tabStrings; j++) { // for each guitar string
+        if (/[=]/.test(tab[i][j])) tab[i][j] = "-"; //dash for equals   
         k = 0;
         // find special tab chars, combine with PREVIOUS note
-        while (tab[n][i + k + 1] && // while next is special
-          (tab[n][i + k + 1][j].search(/[^\d\s-|xX(]/) === 0)) {
+        while (tab[n + k] && tab[n + k][j] && // while next is special
+          (tab[n + k][j].search(/[^\d\x20\-|xX(]/) === 0)) {
           // and current is special or note
-          if ((tab[n][i][j].search(/[^\d\s-|]/) >= 0) ||
-            (tab[n][i][j].search(/[\d]/) >= 0)) {
-            tab[n][i][j] = tab[n][i][j] + tab[n][i + k + 1][j]; // combine
-            tab[n][i + k + 1][j] = "";
+          if (/[^\d\x20\-|]/.test(tab[i][j]) ||
+            /[\d]/.test(tab[i][j]) || /[\u2000-\uffff]/.test(tab[i][j])) {
+            tab[i][j] = tab[i][j] + tab[i + k + 1][j]; // combine
+            tab[n + k][j] = ""; //fake space
           } // if next is special
           k++; // look at next position
-        } // while current is special maybe more to combine
-        if (tab[n][i][j].search(/[)]/) >= 0) { // handle (ghost) notes
-          tab[n][i][j] = "(" + tab[n][i][j];
-          if (tab[n][i - 1] && (tab[n][i - 1][j] = "(")) tab[n][i - 1][j] = ""; // (n)
-          if (tab[n][i - 2] && (tab[n][i - 2][j] = "(")) tab[n][i - 2][j] = ""; // (nn)
+        } // while current is special maybe more to combines
+        if (/[)]/.test(tab[i][j])) {
+          tab[i][j] = "(" + tab[i][j];
+          if (tab[i - 1] && (tab[i - 1][j] = "(")) tab[i - 1][j] = ""; // (n)
+          if (tab[i - 2] && (tab[i - 2][j] = "(")) tab[i - 2][j] = ""; // (nn)
         } // if ghost
-
         //find two digit notes
-        if (tab[n][i][j].search(/\d/) >= 0) { //find digits
-          if (tab[n][i + 1] && (tab[n][i + 1][j].search(/\d/) >= 0)) {
-            tab[n][i + 1][j] = tab[n][i][j] + tab[n][i + 1][j]; //make two digit note
-            tab[n][i][j] = "";
-            for (k=0;k<6;k++) {
-              if (k !== j && tab[n][i][k].search(/\d/) >= 0) {
-                if (tab[n][i + 1][k] === "-") tab[n][i + 1][k] = tab[n][i][k];
-                else tab[n][i + 1][k] = tab[n][i][k] + tab[n][i + 1][k];
-                tab[n][i][k] = "-";
+        if (/\d/.test(tab[i][j])) { //find digits
+          if (tab[n] && (/\d/.test(tab[n][j]))) {
+            tab[n][j] = tab[i][j] + tab[n][j]; //make two digit note
+            tab[i][j] = "";
+            for (k = 0; k < tabStrings; k++) {
+              if (k !== j && /\d/.test(tab[i][k])) {
+                tab[n][k] = (tab[n][k] === "-") ?
+                  tab[i][k] : tab[i][k] + tab[n][k];
+                tab[i][k] = "-";
               }
             }
           }
         }
         // handle (illegal) special before note
-        if (tab[n][i][j].search(/[^\d\s-|xX(]/) >= 0) { //special before note
-          if ((tab[n][i + 1][j]) && (tab[n][i + 1][j].search(/[\d]/) >= 0)) {
-            tab[n][i + 1][j] = tab[n][i][j] + tab[n][i + 1][j]; //combine
-            tab[n][i][j] = "";
+        if (/[^\d\x20\-|xX(\ue000-\uf600]/.test(tab[i][j])) { //special before note
+          if (tab[i + 1] && tab[n][j] &&
+            (/[\d]/.test(tab[n][j]))) {
+            tab[n][j] = tab[i][j] + tab[n][j]; //combine
+            tab[i][j] = "";
           }
         }
       } // for j
@@ -546,157 +636,129 @@
     for (i = 0; i < tabLength; i++) { //recheck every location after combines
       sum = 0; // number of notes in same slice
       dashes = 0;
-      for (j = 0; j < 6; j++) {
-        if (tab[n][i][j].search(/[0-9xX]/) >= 0) {
+      blanks = 0;
+      for (j = 0; j < tabStrings; j++) {
+        if (/[0-9xX]/.test(tab[i][j])) {
           sum += 1;
-          tab[orph][i][j] = true; //notes, not oprphans
+          orph[i][j] = true; //notes, not orphans
           continue;
         }
-        if (tab[n][i][j].search(/\-/) >= 0) { //dashes
-          tab[orph][i][j] = true;
+        if (/[\u0020\u2000-\u200b]/.test(tab[i][j])) { //blanks from lyric edits
+          orph[i][j] = true; //??
+          blanks += 1;
+          continue;
+        }
+        if (/\-/.test(tab[i][j])) { //dashes
+          orph[i][j] = true;
           dashes += 1;
           continue;
         }
-        if (tab[n][i][j].search(/[|]/) >= 0) { // bars
-          tab[orph][i][j] = true;
+        if (/[|]/.test(tab[i][j])) { // bars
+          orph[i][j] = true;
           continue;
         }
-        if (tab[n][i][j] === "") { // fake space
-          tab[orph][i][j] = true;
+        if (tab[i][j] === "") { // fake space
+          orph[i][j] = true;
           continue;
-        }// empty locations created by combining characters
-        if (tab[orph][i][j] === false) dashes += 1;//count orphans as dashes
+        } // empty locations created by combining characters
+        if (orph[i][j] === false) dashes += 1; //count orphans as dashes
       }
-      if (sum > 1) tab[n][i][sliceType] = "c"; // chord found
-      else if ((dashes) === 6) tab[n][i][sliceType] = "s"; //space
+      if (sum > 1) colType[i] = "c"; // chord found
+      else if ((dashes) === tabStrings) colType[i] = "s"; //space
+      else if ((blanks) === tabStrings) colType[i] = "e"; //empty slice
     } // find orphans and space slices
     append = false; //return to default
-    makeCT(tab);
+    makeCT(tab, orph, colType);
   } // prepare ascii tab for conversion
-
-  function showLines() { // replace textarea with processed tab
-    if (lines.length < 1) tabFound = false; //empty
-    var i, showText = "";
-    var noStart = `No tab found.
-Tab lines must match string notes or other starting characters.
-Paste a six line tab example to change the beginning characters`;
-    if (!tabFound && !startChanging && badLines && (badLines.length === 6 || badLines.length === 12)) {
-      if (window.confirm(`Tab does not match start.
-Use this example to change beginnings to match?`)) {
-        changeStart();
-      }
-    }
-    else startChanging = false;
-    if (!tabFound && !undoing && !startChanging) {
-      window.alert(noStart);
-    }
-    if (lines.length < 1) {
-      document.getElementById("TabIn").value = "";
-      document.getElementById("ctOut").innerHTML = "";
-      return;
-    }
-    for (i = 0; i < lines.length - 1; i++) {
-      showText += lines[i].slice() + "\n";
-    }
-    showText += lines[lines.length - 1].slice();
-    // no line break on last line
-    document.getElementById("TabIn").value = showText;
-  } // display processed tab in input box
-
-  function makeCT(tab) { // make inline string array
-    const n = 0; //note part of tab array
-    const orph = 1; //orphan part of tab
-    var tabLength = tab[n].length;
-    const sliceType = 6;
+  
+  function makeCT(tab, orph, colType) { // make inline string array 
     var i, j, k;
     cT = [];
-    k = 0;
-    for (i = 0; i < tabLength; i++) { // build cT note list
-      if (tab[n][i][0] === "|") { // insert bar
-        cT[k] = [iT[Bar], "|"];// + barCount];
+    k = 0;//each cT
+    for (i = 0; i < tab.length; i++) { // build cT note list
+      if (tab[i][0] === "|") { // insert bar
+        cT[k] = ["b", "|"]; // + barCount];
+        if (tab[i + 1] && tab[i + 1][0] === "|") cT[k][Typ] = "b bd";
+        cT[k][Pos] = i;
+        if (cT[k - 1] && cT[k - 1][Typ] === "g") cT[k - 1][Typ] = "gz";
         k += 1;
       } // measure bars
       if (cT[k - 1]) { // look for chord begin
-        if ((tab[n][i][sliceType] === "c") &&
-          (//(cT[k - 1][Iclass] !== "c") &&
-            (cT[k - 1][Itype] !== iT[Gap]))) {
-          cT[k] = [iT[Gap], "."];
+        if ((colType[i] === "c") && (cT[k - 1][Typ] !== "g")) {
+          cT[k] = cT[k - 1][Typ].slice(0,1) === "b" ? ["gz", ""] : ["g", ""];
+          cT[k][Pos] = i;
           k += 1;
         }
       } //chord begins
       if (cT[k - 1]) { // look for chord end
-        if ((tab[n][i][sliceType] !== "c") &&
-          (cT[k - 1][Itype].slice(cT[k - 1][Itype].length - 1) === "c")) {
-          cT[k] = [iT[Gap], "."];
+        if ((colType[i] !== "c") &&
+          (cT[k - 1][Typ].slice(cT[k - 1][Typ].length - 1) === "c")) {
+          cT[k] = ["g", ""];
+          cT[k][Pos] = i;
           k += 1;
         }
       } //chord ends
-      for (j = 0; j < 6; j++) {
-        if (tab[n][i][j].search(/[0-9xX]/) >= 0) { // insert note number
-          cT[k] = [iT[j], tab[n][i][j]];
-          if (tab[n][i][sliceType] === "c") {
-            cT[k][Itype] = iT[j] + " c"; // add space for multi classes
-          }
-          else { //not a chord, combine sequence of notes on same string
-            if (cT[k - 1] && (cT[k - 1][Ichar].search(/[0-9xX]/) >= 0) &&
-                cT[k - 1][Itype] === iT[j]) {
-              if (cT[k - 1][Ichar].slice(cT[k - 1][Ichar]
-                  .length - 1).search(/[^\d]/) >= 0){ // has special last char
-                cT[k - 1][Ichar] += cT[k][Ichar]; // no gap needed
-              }
-              else cT[k - 1][Ichar] += " " + cT[k][Ichar]; //separate numbers
+      for (j = 0; j < tabStrings; j++) {
+        if (/[0-9xX]/.test(tab[i][j])) { // insert note number        
+          cT[k] = [strClass[j], tab[i][j]];
+          if (colType[i] === "c") {
+            cT[k][Typ] = strClass[j] + " c"; // add space for multi classes
+          } else { //not a chord, combine sequence of notes on same string
+            if (cT[k - 1] && (/[0-9xX]/.test(cT[k - 1][Chr])) &&
+              cT[k - 1][Typ] === strClass[j]) {
+              if (/[^\d]/.test(cT[k - 1][Chr].slice(cT[k - 1][Chr]
+                  .length - 1))) { // has special last char
+                cT[k - 1][Chr] += cT[k][Chr]; // no gap needed
+              } else cT[k - 1][Chr] += " " + cT[k][Chr]; //separate numbers
               cT[k].pop();
               k--;
             }
           }
+          cT[k][Pos] = i;
           k += 1;
         }
-    if (document.getElementById("kStrays").checked) {keepStrays = true;}
-    else keepStrays = false;
-        if (keepStrays && tab[orph][i][j] === false) { //include orphans cT
-          if (keepStart && i < startTabPos) cT[k] = [iT[j], tab[n][i][j]];
-          else cT[k] = [iT[Orphan], tab[n][i][j]];
+        if (orph[i][j] === false) { //include orphans
+          cT[k] = (i < startTabPos) ? [strClass[j], tab[i][j]] : ["o", tab[i][j]];
+          cT[k][Pos] = i;
           k += 1;
         } // orphans
       } // notes and note sequences
-    if (document.getElementById("kSpaces").checked) {keepSpaces = true;}
-    else keepSpaces = false;
-      if (keepSpaces && (tab[n][i][sliceType] === "s")) {
+      if (keepSpaces && (colType[i] === "s")) {
         var spaces = 0; //spaces needed
         var sb = 1; // spaces before +1
         var sa = 1; // spaces after +1
         var scount = 1; // cT spaces checked
         var sd = 0; // spaces already done
         var sh = 0; // half spaces already done
-        while (tab[n][i - sb] && (tab[n][i - sb][sliceType] === "s")) sb++;
-        while (tab[n][i + sa] && (tab[n][i + sa][sliceType] === "s")) sa++;
-        if (cT[k - 1]){
-        while ((cT[k - scount] && cT[k - scount][Itype]) &&
-          (cT[k - scount][Ichar] === "-") ||
-          (cT[k - scount][Itype] === "o")) {
-          if (cT[k - scount][Itype] === "d") sd++;
-          if (cT[k - scount][Itype] === "h") sh++;
-          scount++;
-          if (cT[k - scount] === undefined) break;
-        }}
+        while (tab[i - sb] && (colType[i - sb] === "s")) sb++;
+        while (tab[i + sa] && (colType[i + sa] === "s")) sa++;
+        if (cT[k - 1]) {
+          while ((cT[k - scount] && cT[k - scount][Typ]) &&
+            (cT[k - scount][Chr] === "-") ||
+            (cT[k - scount][Typ] === "o")) {
+            if (cT[k - scount][Typ] === "d") sd++;
+            if (cT[k - scount][Typ] === "h") sh++;
+            scount++;
+            if (cT[k - scount] === undefined) break;
+          }
+        }
         sb--;
         sa--;
         spaces = (sb + sa) / 2 - sd - sh * 0.5;
         if (spaces > 0) {
-          if (spaces === 0.5) {
-            cT[k] = [iT[Half], "-"];
-          } else {
-            cT[k] = [iT[Dash], "-"];
-          }
+          cT[k] = (spaces === 0.5) ? ["h", "-"] : ["d", "-"];
+          cT[k][Pos] = i;
           k += 1;
         }
       } // add spaces
     } // create cT
-    findLengths();
+    playPrep();
+    prepCt();
   } // convertTab
-  
-  function findLengths(){
- //  create array of lengths for chords, measures and sections for linebreaks
+
+  function prepCt() {
+    //  create array of lengths for chords, measures and sections for linebreaks
+    var featureLength = [];
     var cTabLength = Object.keys(cT).length;
     var note; //cT index
     var nLen = [];
@@ -705,383 +767,3789 @@ Use this example to change beginnings to match?`)) {
     var startMeasure = 0; //note position found, back save location
     var findChord = 0;
     var startChord = 0;
-    if (document.getElementById("kSpaces").checked) {keepSpaces = true;}
-    else keepSpaces = false;
-    if (document.getElementById("kStrays").checked) {keepStrays = true;}
-    else keepStrays = false;
-    if (document.getElementById("brkFour").checked) {breakFour = true;}
-    else breakFour = false;
-    if (document.getElementById("kParts").checked) keepSections = true;
-    else keepSections = false;
-    if (document.getElementById("kMeasures").checked) keepMeasures = true;
-    else keepMeasures = false;
+    var barCount = 0;
     for (note = 0; note < cTabLength; note++) { //find and get lengths
-      featureLength[note] = Infinity; //default default is too long to fit
-      switch (cT[note][Itype]) {
+      if (!cT[note][Chr]) cT[note][Chr] = "";
+      featureLength[note] = 12; //Infinity; //default default is*was* too long to fit
+      switch (cT[note][Typ].slice(0, 1)) {
         case "g":
-          nLen[note] = 10;
-          if (keepChords) {
-            if (cT[note - 1] && cT[note - 1][Itype].
-                slice(cT[note - 1][Itype].length -1) === "c")
-                  //look behind for chord end
-                  {featureLength[startChord] = totalLength - findChord + 20;
-                  featureLength[note]= 20;}
-            if (cT[note + 1] && cT[note + 1][Itype].
-                slice(cT[note + 1][Itype].length -1) === "c")
-                 //look ahead for chord begin
-                  {startChord = note;
-                  findChord = totalLength;}
-          } //keep chords
-          else featureLength[note] = nLen[note] +10;
+          nLen[note] = 12;
+          if (cT[note - 1] && cT[note - 1][Typ].slice(cT[note - 1][Typ].length - 1) === "c")
+          //look behind for chord end
+          {
+            featureLength[startChord] = totalLength - findChord + 22;
+            featureLength[note] = 22;
+          }
+          if (cT[note + 1] && cT[note + 1][Typ].slice(cT[note + 1][Typ].length - 1) === "c")
+          //look ahead for chord begin
+          {
+            startChord = note;
+            findChord = totalLength;
+          }
+/*          if (cT[note + 1] && (cT[note + 1][Typ] === "b")) {
+            {console.log("bl")
+              cT[note + 1][Typ] = "b bl";}
+          }//NOT WORKING****************/            
           break;
         case "b":
-          featureLength[note] = 10; //default
-          if (keepMeasures || keepSections) {
-              featureLength[startMeasure] = totalLength - findMeasure + 10;
-              startMeasure = note;
-              findMeasure = totalLength;}
-          if (cT[note - 1] && cT[note - 1][Itype] === "b" && keepSections)
-              if (note > 1) featureLength[note - 1] = Infinity; //section
-          nLen[note] = 10; //always, split or not
+          featureLength[note] = 12; //default
+          if (keepMeasures) {
+            featureLength[startMeasure] = totalLength - findMeasure + 12;
+            startMeasure = note;
+            findMeasure = totalLength;
+          }
+          barNotes[barCount] = note;       
+          barCount++;
+          if (cT[note - 1] && (cT[note - 1][Typ] === "b") || (cT[note - 1][Typ] === "b bd")) {
+            if (note > 1 && keepSections) featureLength[note - 1] = Infinity; //section
+          }         
+          nLen[note] = 12; //always, split or not
           break;
         case "h":
           if (keepSpaces) {
-              nLen[note] = 10;
-              featureLength[note] = 10;}
-          else {
-              nLen[note] = 0;
-              featureLength[note] = 0;}
+            nLen[note] = 12;
+            featureLength[note] = 12;
+          } else {
+            nLen[note] = 0;
+            featureLength[note] = 0;
+          }
           break;
         case "d":
           if (keepSpaces) {
-              nLen[note] = 20;
-              featureLength[note] = 20;}
-          else {
-              nLen[note] = 0;
-              featureLength[note] = 0;}
+            nLen[note] = 22;
+            featureLength[note] = 22;
+          } else {
+            nLen[note] = 0;
+            featureLength[note] = 0;
+          }
           break;
         case "o":
-          if (keepStrays) {
-              nLen[note] = 10 + 10 * cT[note][Ichar].length;
-              featureLength[note] = nLen[note];}
-          else {
-              nLen[note] = 0;
-              featureLength[note] = 0;}
+          nLen[note] = 12 + 12 * cT[note][Chr].length;
+          featureLength[note] = nLen[note];
           break;
         default:
-          nLen[note] =  10 + 10 * cT[note][Ichar].length;
+          nLen[note] = 12 + 12 * cT[note][Chr].length;
           featureLength[note] = nLen[note];
-     }
+      }
       totalLength += nLen[note]; //actual not feature length
     }
-    makeHtml();
-  } //findLengths of sections measures chords
-  
+    makeHtml(featureLength);
+    //playPrep();
+  } //find lengths of sections measures chords
+
   function noteLength(n) {
     var noteLength = 0;
-      switch (cT[n][Itype]) {
-        case "g":
-          noteLength = 10;
-          break;
-        case "b":
-          noteLength = 10; //always, split or not
-          break;
-        case "h":
-          if (keepSpaces) noteLength = 10;
-          else noteLength = 0;
-          break;
-        case "d":
-          if (keepSpaces) noteLength = 20;
-          else noteLength = 0;
-          break;
-        case "o":
-          if (keepStrays) noteLength = 10 + 10 * cT[n][Ichar].length;
-          else noteLength = 0;
-          break;
-        default:
-          noteLength =  10 + 10 * cT[n][Ichar].length;
-     }
+    switch (cT[n][Typ]) {
+      case "g":
+        noteLength = 7;
+        break;
+      case "b":
+        noteLength = 20; //always, split or not
+        break;
+      case "h":
+        noteLength = keepSpaces ? 17 : 0;
+        break;
+      case "d":
+        noteLength = keepSpaces ? 22 : 0;
+        break;
+      case "o":
+        noteLength = 10 + 12 * cT[n][Chr].length;
+        break;
+      default:
+        noteLength = 10 + 12 * cT[n][Chr].length;
+    }
     return noteLength;
-  }
-  
-  function makeHtml(){
-    var note;
-    var endBar;
+  } 
+
+  function makeHtml(featureLength) {
+    var note, endBar, newDiv, newLyr, lyrSection, lyrSongPart;
+    if (!paused) { //playing
+      barsHidden = 0;
+      partsHidden = 0;
+    }
+    var barCount = barsHidden + partsHidden;
+    var lyricDivs = 0;
     var notecount = 0;
-    var brCount = 0;
+    var noteStart = barNotes[barsHidden + partsHidden];
+    if (barsHidden === 0) noteStart = 0;
     var cTabLength = Object.keys(cT).length;
-    var list = document.getElementById("ctOut");
     var item = []; //list items may include new
-    var ctW = document.getElementById("ctOut");
     notecount = 0;
-    ctWidth = parseFloat(window.
-       getComputedStyle(ctW).getPropertyValue("width"));
-    document.getElementById("ctOut").innerHTML = "";
-    for (note = 0; note < cTabLength; note++) {
-      if (10 + notecount + 3*ctScale + featureLength[note] > ctWidth) { //add break first
-        if (cT[note][Itype] === "b") { //add end bar for measure break
+    var ctWidth = parseFloat(window.getComputedStyle(ctabOut).getPropertyValue("width"));
+    var prevInst = " " + instrument.slice(2);
+    if (document.getElementById("instr")) prevInst = document.getElementById("instr").innerHTML;
+    ctabOut.innerHTML = "";
+    if (barCount !== 0) ctabOut.appendChild(document.createTextNode(barsHidden));
+    for (note = noteStart; note < cTabLength; note++) {
+      if (note === tabStrings) { //string notes
+        var inst = document.createElement("div");
+        inst.setAttribute("id", "instr");
+        inst.setAttribute("contenteditable", "true");
+        inst.setAttribute("spellcheck", "false");        
+        inst.innerHTML = prevInst;
+        ctabOut.appendChild(inst);
+        ctabOut.appendChild(document.createElement("br"));
+        ctabOut.appendChild(document.createTextNode("1"));
+        featureLength[note] = 0; // not infinity for ||
+        notecount = 0;
+      }
+      if (25 + notecount + 3 * ctScale + featureLength[note] > ctWidth) { //add break first
+        if (cT[note][Typ][0] === "b") { //add end bar for measure break
           endBar = document.createElement("Li");
           endBar.setAttribute("class", "b");
           endBar.appendChild(document.createTextNode("|"));
-          list.appendChild(endBar);
+          ctabOut.appendChild(endBar);
         }
-        list.appendChild(document.createElement("br"));
-        brCount++;
-        if (brCount > 3 && breakFour) {
-          list.appendChild(document.createElement("br"));
-          brCount = 0;
-        }
+        ctabOut.appendChild(document.createElement("br"));
+        if (lyricDivs > 0) ctabOut.appendChild(document.createElement("br"));
+        if (ctBars[barCount] && featureLength[note] === Infinity) ctabOut.
+          appendChild(document.createTextNode(ctBars[barCount + 1]));
+        else if (ctBars[barCount])
+          ctabOut.appendChild(document.createTextNode(ctBars[barCount])); //not a new part
         notecount = 0;
+        lyricDivs = 0;
       }
       item[note] = document.createElement("Li");
-      item[note].setAttribute("class", cT[note][Itype]);
-      item[note].appendChild(document.createTextNode(cT[note][Ichar]));
-      list.appendChild(item[note]);
+      item[note].setAttribute("id", "i" + note)
+      //cT[note][Chr] = cT[note][Chr].replace(/[\u2001-\u200B\u202f\u205f]/g, "");
+/*      if (!(/^\d/.test(cT[note][Chr])) &&
+          musicSym.test(cT[note][Chr]) && cT[note][Typ] !== "g" &&
+          cT[note][Typ].slice(0,1) !== "o")//leave out ophans already
+        cT[note][Typ] = "o";// orphan for notesymbols with no fret digit*/
+      var ctChars = [];    
+      ctChars = cT[note][Chr].split(""); //separate for note classes
+      for (var i = 0; i < ctChars.length; i++) {
+        if (!showNotes && musicSym.test(ctChars[i])) {
+          // nothing
+        }
+        else if (beamSymbols.test(ctChars[i])) {          
+          var noteTxt = ctChars[i];
+          while (ctChars[i + 1] && beamSymbols.test(ctChars[i + 1])){
+            i++;
+            noteTxt += ctChars[i];
+          }
+          item[note].appendChild(document.createTextNode(noteTxt + thin));
+        }
+        else item[note].appendChild(document.createTextNode(ctChars[i]));
+      } 
+      if (cT[note][Typ] === "b" || cT[note][Typ] === "b bd") {      
+        if (lyricTextBars && lyricTextBars[barCount] && lyricTextBars[barCount].trim().length > 0) {
+          newLyr = lyricTextBars[barCount];
+          lyrSection = newLyr.match(/%(.*?)%/);
+          if (lyrSection) {
+            newLyr = newLyr.replace(lyrSection[0], "");
+            lyrSongPart = document.createElement("div");
+            lyrSongPart.setAttribute("class", "songpart");
+            lyrSongPart.setAttribute("id", "sec" + barCount);
+            lyrSongPart.innerHTML = lyrSection[1];
+            ctabOut.appendChild(lyrSongPart);
+            if (cT[note - 1] && cT[note - 1][Typ] === "b")
+              ctabOut.appendChild(document.createElement("br"));
+            if (newLyr.trim().length === 0) lyricDivs--;
+          }          
+          newDiv = document.createElement("div");
+          newDiv.setAttribute("class", "lyric");
+          newDiv.innerHTML = makeLyricNote(newLyr);
+          item[note].appendChild(newDiv);
+          lyricDivs++;
+        }
+        barCount++;
+      } 
+      item[note].setAttribute("class", cT[note][Typ]);
+      ctabOut.appendChild(item[note]);
       notecount += noteLength(note);
-      //lastNote = note + 1; // keep for append
+    }
+    letterRestore();
+    if (document.getElementById("instr")) 
+      document.getElementById("instr").style.display = "inline";
+  }
+  
+  function clearCtSel() {//clear highlight classes
+    var p;
+    for (var i = 0; i < songLength; i++) {
+      p = playThings[i][3].slice(1);
+      if (cT[p]) {
+        cT[p][Typ] = /c/.test(cT[p][Typ]) ? cT[p][Typ].slice(0,4) : cT[p][Typ].slice(0,2);
+      }
     }
   }
   
-  function changeStart() {
-    var i, j, exSlice, exLines = [], startPos = 0, ok = false;
-    if (badLines && (badLines.length === 6 || badLines.length === 12)) {
-      for (i = 0; i < 6 ; i++){
-        if (badLines.length === 6) exLines[i] = badLines[i].slice(0, startCharLen);
-        if (badLines.length === 12) exLines[i] = badLines[i*2].slice(0, startCharLen);
+  function makeLyricNote(newLyr) {       
+    var n = "</i>";
+    newLyr = newLyr.replace(/\[/g,"<i class='chordSym'>").replace(/\]/g,"</i>").
+      replace(/\{/g,"<i style = '").replace(/\}/g,"'>").
+      replace(/\\/g, n).replace(/\(/g,"<em>").replace(/\)/g,"</em>");      
+    //{} is any CSS, \ to end span, () italic, [] chord name
+    return newLyr;
+  }
+
+  function cutTab() {
+    var cutCursor, i;
+    var clipCut = [];
+    noDownlink();
+    undoing = false;
+    append = false;
+    doStuff();
+    locateTabCursor();
+    oldPlace = cursorPlace;
+    cutCursor = cursorPos;
+    if (cursorWhere === cursorThere) {//no selection, cut all
+      prevHead = [];
+      prevTail = [];
+      lines = [];
+      prevCut = tabSplit.slice();
+      tabArea.value = "";
+      tabArea2.value = "";
+      lyrCut = trimTail(lyricArea.value);
+      lyricArea.value = "";
+      lyricText = "";
+      barNumb.innerHTML = "";
+      getTabIn();
+      for (i = 0 ; i < tabStrings; i++) {
+        if (startTab[i][2] === "|" && prevCut[i][0] === "|")
+          clipCut[i] = startTab[i][0] + startTab[i][1] + prevCut[i];
+        else clipCut[i] = startTab[i] + prevCut[i];
       }
-      for (i=0;i<3;i++){
-        exSlice = "";
-        for(j=0;j<6;j++){
-          exSlice += exLines[j][i];
-        }
-        if (!ok && exSlice === "||||||") {startPos = i; ok = true;}
-        if (!ok && exSlice === "------") {startPos = i; ok = true;}
-      }
+      if (navigator.clipboard)
+        navigator.clipboard.
+          writeText("\n" + clipCut.join("\n") + "\n" + "  "  + lyrCut + "\n");
+      return;//done
+    }//no selection
+    lines = [];
+    for (i = 0; i < tabStrings; i++) { //separate sections
+      prevHead[i] = tabSplit[i].slice(0, cursorPos);
+      prevCut[i] = tabSplit[i].slice(cursorPos, cursorPos2);
+      prevTail[i] = tabSplit[i].slice(cursorPos2);
+      lines[i] = prevHead[i] + prevTail[i];
+      if (startTab[i][2] === "|" && prevCut[i][0] === "|")
+        clipCut[i] = startTab[i][0] + startTab[i][1] + prevCut[i];      
+      else clipCut[i] = startTab[i] + prevCut[i];      
     }
-    if (ok){
-      for (i=0;i<6;i++){
-        startTab[i] = exLines[i].slice(0, startPos + 1)
-          .padStart(startCharLen);
+    lyrHead = lyricText.slice(0, cursorPos);
+    lyrCut = lyricText.slice(cursorPos, cursorPos2);
+    lyrTail = trimTail(lyricText.slice(cursorPos2));
+    lyricText = lyrHead + lyrTail;
+    lyricArea.value = lyricText + extendTail;
+    tabFound = true;
+    showLines();
+    convertTab();
+    setSelStart = cutCursor;
+    setSelEnd = setSelStart;
+    tabArea.setSelectionRange(setSelStart, setSelEnd);
+    tabArea.focus();
+    if (navigator.clipboard)
+      navigator.clipboard.writeText("\n" + clipCut.join("\n") + "\n" + "  " + lyrCut + "\n");
+  }
+
+  function copyTab() {
+    var split = [], cpy = [], clp, curKeep;
+    locateTabCursor();
+    if (cursorWhere === cursorThere) {
+      split = tabArea.value.split("\n");
+      for (var i = 0; i < tabStrings; i++) {
+        cpy[i] = startTab[i] + trimTail(split[i]);
       }
-      lines = badLines.slice();
-      startChanging = true;
+      clp = cpy.join("\n");
+      if (navigator.clipboard) navigator.clipboard.writeText(clp + "\n" + lyricText);
+    }
+    curKeep = cursorPos;
+    cutTab();
+    tabArea.focus();
+    tabArea.setSelectionRange(curKeep,curKeep);
+    addTab();
+  }
+  
+/*  function pasteClip(paste) {
+    tabArea.value = "";
+    tabArea.value = paste;
+    prevLines = lines.slice();
+    newLines = tabArea.value.replace(/(\r\n|\n|\r)/gm, "\n").split("\n");
+    if (lines[0].length <  1) { //empty
+      append = false;
+      undoing = false;
+      findTab();
+    } else {
+      for (var i = 0; i < tabStrings; i++) { //separate sections
+        prevHead[i] = prevLines[i].slice(0, cursorPos);
+        prevTail[i] = prevLines[i].slice(cursorPos);
+      }
+      append = true;
+      undoing = false;
       findTab();
     }
-    else {
-      window.alert(`Beginning characters must all be | or - by the third position.
-This example could not be used.`);
-      startChanging = false;
+  }*/
+  
+  function pasteFail(err) {
+    var msg = `<h2>Could not paste from clipboard</h2><p>Browser may not allow paste with button click. 
+
+Instead try paste from menu, Ctrl-V, Cmd-V,
+long press, right click etc.
+
+Use <button>Paste</button> to add copied or cut
+tab text from this page.
+
+Offline clipboard paste may work in Chrome.
+</p>` + err
+    document.getElementById("message").innerHTML = msg;
+    document.getElementById("msgdiv").style.display = "block";
+    document.getElementById("msgdiv").focus();
+  }
+
+  function addTab() {
+    //var didPaste = false;
+    var add = true;
+    locateTabCursor(add);    
+    if (prevCut[0].length < 1 ) {//only uses clipboard when empty after reload
+      //didPaste = true;
+      if (! navigator.clipboard.readText) pasteFail();
+       navigator.clipboard.readText()
+        .then(text => {
+          pasteTab(text);
+        })
+        .catch(err => {
+          pasteFail(err);
+        })      
+    }
+    //copy = false;
+    //if (didPaste) return;
+    noDownlink();
+    undoing = false;
+    append = false;
+    doStuff();
+    oldPlace = cursorPlace;
+    lines = [];
+    if (prevCut.length !== tabStrings) return;    
+    for (var i = 0; i < tabStrings; i++) { //separate sections
+      prevHead[i] = tabSplit[i].slice(0, cursorPos);
+      prevTail[i] = tabSplit[i].slice(cursorPos);
+      lines[i] = prevHead[i] + prevCut[i] + prevTail[i];
+    }
+    lyrHead = lyricText.slice(0, cursorPos);
+    lyrTail = trimTail(lyricText.slice(cursorPos));
+    lyricText = lyrHead + lyrCut + lyrTail;
+    lyricArea.value = lyricText + extendTail;
+    tabFound = true;
+    showLines();
+    convertTab();
+    setSelStart = cursorPos;
+    setSelEnd = setSelStart;
+    tabArea.setSelectionRange(setSelStart, setSelEnd);
+    tabArea.focus();
+  }
+  
+  function noteToggle(){
+    showNotes ? showNotes = false : showNotes = true;
+    var addClass;
+    addClass = document.getElementById("showNote");
+    if (showNotes) addClass.innerHTML = "&#xE1d7;";
+    else addClass.innerHTML = "&#xE560;";    
+    checkChange();    
+  }
+  
+  function menuToggle(){
+    showButtons ? showButtons = false : showButtons = true;
+    var d = document.getElementsByClassName("morebuttons");
+    for(var i = 0; i < d.length; i++) {    
+      d[i].style.display = showButtons ? 'block' : 'none';
+    }
+    if (showPitch) pitchToggle();
+    showTable = 2;
+    tableToggle();
+  }
+  
+  function pitchToggle() {
+    showPitch = showPitch ? false : true;
+    var pitchdiv = document.getElementById("pitches");
+    pitchdiv.style.display = showPitch ? 'block' : 'none';
+    var t, p, n;
+    for (var i = 1;i<10;i++) {//one based
+      t = 9 - (i + 9 - tabStrings);//
+      ptable.rows[i].cells[0].setAttribute("class", strClass[t])
+      p = stringPitch[strClass[t]];
+      if (p && p.length === 2) n = noteNames[p[0] + pitchShift[i] + capoShift];
+      else n = noteNames[p + pitchShift[i] + capoShift];
+      ptable.rows[i].cells[1].textContent = n;
+      ptable.rows[i].cells[0].textContent = startTab[i - 1];
+      if (showPitch) ptable.rows[i].cells[2].textContent = "";
+      if (showPitch && p) {
+        ptable.rows[i].cells[2].textContent = pitchShift[i];
+        ptable.rows[i].cells[2].style.backgroundColor = "#fff";
+      }
+      else ptable.rows[i].cells[2].style.backgroundColor = "#d0d0d0";
+    }
+    readPitches();
+    playPrep();
+  }
+  
+  function readPitches(){
+    var c, t = [], p, n;
+    for (var i = 1;i<10;i++) {//one based
+      c = ptable.rows[i].cells[0].textContent;
+      if (c) t[i] = c.padStart(3);
+      var x = parseFloat(ptable.rows[i].cells[2].textContent);      
+      if (x != x) x = 0;//!NaN
+      if (x > 24) x = 0;//max
+      if (x < -24) x = 0;
+      pitchShift[i] = x; 
+      p = stringPitch[strClass[9 - (i + 9 - tabStrings)]];
+      if (p && p.length === 2) n = noteNames[p[0] + pitchShift[i] + capoShift];
+      else n = noteNames[p + pitchShift[i] + capoShift];
+      if (!n) {
+        if (p && p.length === 2) {
+          n = p[0] + pitchShift[i] + "," + parseFloat(p[1] + pitchShift[i]);
+        }
+        else n = p + pitchShift[i] + capoShift;
+      }
+      if (n != n) n = "";
+      ptable.rows[i].cells[1].textContent = n;
+    }
+    return t;
+  }
+  
+var tid;
+var nextStr = 10;
+
+  function abortTimer() {
+    clearTimeout(tid);
+    nextStr = 10;
+    playPrep();
+  }
+  
+  function strum() {
+    var t = readPitches();
+    tuneArea.value = t.join("\n").slice(1);
+    tuneBlur();
+    strumLoop();
+  }
+  
+  function strumLoop(){  
+    nextStr--;//low to high
+    var sp = stringPitch[ptable.rows[nextStr].cells[0].getAttribute("class")]//get from table
+    var pp;
+    if (sp && sp.length === 2) {
+      pp = [];
+      pp[0] = sp[0] + pitchShift[nextStr] + capoShift;
+      pp[1] = sp[1] + pitchShift[nextStr] + capoShift;
+    }
+    else pp = sp + pitchShift[nextStr] + capoShift;
+    singleThing = pp;
+    if (nextStr < 1) abortTimer();
+    pickit();
+  }//strum
+  
+  function pickit() {
+    if (nextStr === 10) return; //aborted
+    if (singleThing) {
+      document.getElementById("notePlay").click();//hidden button event
+      tid = setTimeout(strumLoop, 600);
+    }
+    else strumLoop();
+  }
+  
+  function closepitch (){
+    showPitch = false;
+    var pitchdiv = document.getElementById("pitches");
+    pitchdiv.style.display = 'none';
+    var t = readPitches();
+    tuneArea.value = t.join("\n").slice(1);
+    tuneBlur();
+    playPrep();
+  }
+  
+  function metroToggle() {
+    metronome = metronome ? false : true;
+    var m = document.getElementById("metro");
+    if (metronome) m.setAttribute("class", "transport off");
+    else m.setAttribute("class", "transport black");
+    playPrep();
+  }
+  
+  function shiftTune() {
+    var t = document.getElementById("pretune").value;
+    if (t === "0") pitchShift = ["",0,0,0,0,0,0,0,0,0];
+    if (t === "1") pitchShift = ["",0,0,0,0,0,-2,-2,0,0];
+    if (t === "2") pitchShift = ["",-2,0,0,0,0,-2,0,0,0];
+    if (t === "3") pitchShift = ["",2,2,2,2,2,0,0,0,0];
+    if (t === "4") pitchShift = ["",0,0,1,2,2,0,0,0,0];
+    if (t === "5") pitchShift = ["",-2,-2,-1,0,0,-2,0,0,0];
+    if (t === "6") pitchShift = ["",0,1,0,-2,-2,-4,0,0,0];
+    if (t === "7") pitchShift = ["",-1,1,0,-2,-2,-4,0,0,0];
+    if (t === "8") pitchShift = ["",-2,0,0,0,-2,-2,0,0,0];
+    if (t === "9") pitchShift = ["",-2,-1,0,0,-2,-2,0,0,0];
+    if (t === "10") pitchShift = ["",0,-2,0,-2,-2,-4,0,0,0];
+    if (t === "11") pitchShift = ["",-2,-2,0,-2,-2,-2,-2,0,0];    
+    if (t === "12") pitchShift = ["",0,0,12,12,12,12,0,0,0];
+    if (t === "13") pitchShift = ["",3,5,2,0,-2,-4,0,0,0];    
+    showPitch = false;
+    pitchToggle();
+  }
+  
+  function capoChange(){
+    capoShift = parseFloat(document.getElementById("capo").value);
+    if (capoShift != capoShift) capoShift = 0;
+/*    for (var i = 1;i<10;i++) {//one based
+      ptable.rows[i].cells[2].textContent = pitchShift[i] + parseFloat(capoShift);
+    }*/
+    readPitches();
+  }
+  
+  function colorToggle(){
+    showColors = (showColors + 1) % 3;
+    var stripes = document.getElementsByClassName("stripe");
+    var tstripes = document.getElementsByClassName("tstripe");
+    for(var i = 0; i < stripes.length; i++) {
+      if (showColors > 0  || parseInt(stripes[i].id.slice(1)) > tabStrings) 
+        stripes[i].style.display = 'none';
+      else if (parseInt(stripes[i].id.slice(1)) <= tabStrings) {
+        stripes[i].style.display = 'block';
+        stripes[i].style.backgroundColor =
+          colors[strClass[tabStrings -stripes[i].id.slice(1)].slice(1)];
+      }
+    }
+    for(i = 0; i < tstripes.length; i++) {
+      if (showColors === 2 || parseInt(tstripes[i].id.slice(1)) > tabStrings) 
+        tstripes[i].style.display = 'none';
+      else if (parseInt(tstripes[i].id.slice(1)) <= tabStrings) {
+        tstripes[i].style.display = 'block';
+        tstripes[i].style.backgroundColor =
+          colors[strClass[tabStrings -tstripes[i].id.slice(1)].slice(1)];
+      }
+    }
+    var bstyle = document.getElementById("colorButton");
+    if (showColors === 0 ) {
+      bstyle.style.backgroundImage = "linear-gradient(to bottom,#fceb80 20%, #9be2f8 20% 40%, #6fdd90 40% 60%, #e27479 60% 80%, #5c8dc4 80%)";
+      bstyle.innerHTML = "-";
+      tabArea.style.color = "white";
+      tabArea2.style.display = "block";
+      tuneArea.style.color = "white";
+      tuneArea2.style.display = "block";
+    }
+    if (showColors === 1 ) {
+      bstyle.style.backgroundImage = "linear-gradient(to bottom,#fceb80 20%, #9be2f8 20% 40%, #6fdd90 40% 60%, #e27479 60% 80%, #5c8dc4 80%)";
+      bstyle.innerHTML = "|";
+      tabArea.style.color = "black";
+      tabArea2.style.display = "none";
+      tuneArea.style.color = "white";
+      tuneArea2.style.display = "block";      
+    }
+    if (showColors === 2 ) {
+      bstyle.style.backgroundImage = "linear-gradient(to bottom, #d1d1d1 20%, #b1b1b1 20% 40%, #939393 40% 60%, #717171 60% 80%, #505050 80%)";
+      bstyle.innerHTML = "X";
+      tabArea.style.color = "black";
+      tabArea2.style.display = "none";
+      tuneArea.style.color = "black";
+      tuneArea2.style.display = "none";      
+    }
+    linkScroll();
+  }
+  
+  function tableToggle(){
+    showTable = (showTable + 1) % 3;
+    if (showTable === 1) {
+      document.getElementById("noterow").style.display = "block";
+    }
+    if (showTable === 2) {
+     document.getElementById("noterow").style.display = "inline-table";      
+    }
+    if (showTable === 0) {
+     document.getElementById("noterow").style.display = "none";      
+    }    
+  }
+
+  function spread() {
+    var lyr = document.querySelectorAll("div.lyric");
+    lyricLtrSpace += 0.5;
+    for (var i = 0; i < lyr.length; i++) {
+      lyr[i].style.letterSpacing = lyricLtrSpace + "px";
     }
   }
 
-  function matchStart (lines){
-    var i,j,k,m;
-    var matchedLengths;
-    var matches;
-    var goodLength;
-    for (j = 0; j < 6; j++) {
-      goodLines[j] = startTab[j].padStart(startCharLen);//always same length
+  function squeeze() {
+    var lyr = document.querySelectorAll("div.lyric");
+    lyricLtrSpace -= 0.5;
+    for (var i = 0; i < lyr.length; i++) {
+      lyr[i].style.letterSpacing = lyricLtrSpace + "px";
     }
-    var lineSt = ""; //first three line chars without spaces
-    var startSt = ""; //first chars of string without spaces
-    var slice = [];
-    for (i = 0; i < lines.length; i++) {
-      matches = 0;
-      matchedLengths = [];
-      goodLength = lines[i].length;
-      for (j = 0; j < 6; j++) {
-        if (lines[i + j]) { // if defined
-          lineSt = lines[i + j].split(" ").join("").slice(0,3);
-          startSt = startTab[j].split(" ").join("");//no spaces
-          m = 0; // character matches
-          if (lineSt.length > 2) { // skip short lines
-            for (k=0;k < startSt.length;k++) //each start character
-              if (lineSt[k].toUpperCase() === startSt[k].toUpperCase()) m++;
-            }
-          else break; //short line
-          if (m === startSt.length) { //matched a line
-            matches += 1;
-            matchedLengths[j] = lines[i + j].length;
-            if (matchedLengths[j - 1] &&
-                (matchedLengths[j] < matchedLengths[j - 1]))
-              goodLength = lines[i + j].length; //get shortest length
-          } // line matches
-        } //defined
-      } //set of 6
-      if (matches === 6) {
-        for (k = 0; k < 4; k++) { //find start position to show
-          slice[k] = "";
-          for (j = 0; j < 6; j++) {
-            slice[k] += lines[i + j][k];
-          }
-          if (slice[k] === "||||||") break; //prefer bar
-          if (slice[k] === "------") break; //settle for dashes
-        }
-        if (k > 3) {
-          k = 3; //use last possible position regardless
-        }
-        startTabPos = k + 1; //skip start in convertTab
-        for (j = 0; j < 6; j++) { //truncate to goodlength
-          // make sections if needed
-          if (lines[i + j].slice(2,3) !== "|") goodLines[j] += "|";
-          goodLines[j] += lines[i + j].slice(startTabPos, goodLength);
-        }
-        i += 5;
-      }
-    }
+  }
 
-    if (goodLines[0].length > startCharLen) {
-      tabFound = true;
+  function letterRestore() {
+    var lyr = document.querySelectorAll("div.lyric");
+    for (var i = 0; i < lyr.length; i++) {
+      lyr[i].style.letterSpacing = lyricLtrSpace + "px";
+    }
+  }
+
+  function help() {
+    const helpTxt = document.getElementById("helpText");
+    if (!showHelp) {
+      mainScroll = window.scrollY;
+      helpTxt.setAttribute("class", "show");
+      showHelp = true;
+      document.documentElement.scrollTop = helpScroll;
+    } else {
+      helpScroll = window.scrollY;
+      helpTxt.setAttribute("class", "hide");
+      showHelp = false;
+      document.documentElement.scrollTop = mainScroll;
+      if (tabArea.value.length < 25 && tabStrings === 6) greenSleeves();
+      else tabArea.focus();
+    }
+  }
+
+  function undo() {
+    var upop = [];
+    if (undoCount < 1) {
+      lines = (" ").repeat(tabStrings - 1).split(" ");
+      tabArea.value = "";
+      tabArea2.value = "";
+      lyricArea.value = "";
+      barNumb.innerHTML = "";
+      ctabOut.innerHTML = "";
+      document.getElementById("songTitle").innerHTML = "";
       return;
     }
-    else tabFound = false;
-    
-    var getDblStart = []; // if fail then try doublespaced matching
-    for (j=0 ;j < 6;j++){
-      getDblStart[2*j] = startTab[j];
-      getDblStart[2*j + 1] = "";
+    //var scroll = lyricArea.scrollLeft;
+    tabLyr = document.activeElement.id; //which text changed
+    undoCursor = (tabLyr === "TabIn") ? cursorWhere : cursorLyric;
+    undoScroll = lyricArea.scrollLeft;    
+    redoCount = redoStack.push([lines, lyricText, tabLyr, undoCursor, undoScroll]);
+    lines = (" ").repeat(tabStrings - 1).split(" ");
+    upop = undoStack.pop();
+    lines = upop[0];
+    if (!lines[0]) lines = (" ").repeat(tabStrings - 1).split(" ");
+    lyricText = upop[1];
+    lyricArea.value = lyricText + extendTail;
+    makeBarNums();
+    undoCount = undoStack.length;
+    append = false;
+    undoing = true;
+    tabFound = true;
+    showLines();
+    convertTab();
+    undoing = false;
+    tabLyr = upop[2];
+        
+    if (tabLyr === "TabIn") {
+      tabArea.focus();      
+      tabArea.setSelectionRange(upop[3], upop[3]);
+      locateTabCursor();
+      playCursor(cursorPos, cursorPos);
     }
-    for (i = 0; i < lines.length; i++) {
-      matches = 0;
-      matchedLengths = [];
-      goodLength = lines[i].length;
-      for (j = 0; j < 12; j += 2) {
-        if (lines[i + j]) { // if defined
-          lineSt = lines[i + j].split(" ").join("").slice(0,3);
-          startSt = getDblStart[j].split(" ").join("");//no spaces
-          m = 0; // character matches
-          if (lineSt.length > 2) { // skip short lines
-            for (k=0;k < startSt.length;k++) //each start character
-              if (lineSt[k].toUpperCase() === startSt[k].toUpperCase()) m++;
-            }
-          else break; //short line
-          if (m === startSt.length) { //matched a line
-            matches += 1;
-            matchedLengths[j] = lines[i + j].length;
-            if (matchedLengths[j - 1] &&
-                (matchedLengths[j] < matchedLengths[j - 1]))
-              goodLength = lines[i + j].length; //get shortest length
-          } // line matches
-        } //defined
-      } //set of 6
-      if (matches === 6) {
-        for (k = 0; k < 4; k++) { //find start position to show
-          slice[k] = "";
-          for (j = 0; j < 12; j += 2) {
-            slice[k] += lines[i + j][k];
-          }
-          if (slice[k] === "||||||") break; //prefer bar
-          if (slice[k] === "------") break; //settle for dashes
-        }
-        if (k > 3) {
-          k = 3; //use last possible position regardless
-        }
-        startTabPos = k + 1; //skip start in convertTab
-        for (j = 0; j < 6; j++) { //truncate to goodlength
-          // make sections if needed
-          if (lines[i + j*2].slice(2,3) !== "|") goodLines[j] += "|";
-          goodLines[j] += lines[i + j*2].slice(startTabPos, goodLength);
-        }
-        i += 10;
-      }
+    else {
+      lyricArea.setSelectionRange(upop[3], upop[3]);
+      lyricArea.focus();
+      locateLyricCursor();
     }
+    lyricArea.scrollLeft = upop[4];
+    playPrep();
+  }
 
-    if (goodLines[0].length > startCharLen) {
-      tabFound = true;
-      return;
+  function redo() {
+    var repop = [];
+    if (redoCount < 1) return;
+    undoLines = lines.slice();
+    undoLyrics = lyricText;
+    tabLyr = document.activeElement.id; //which text changed
+    undoCursor = (tabLyr === "TabIn") ? cursorWhere : cursorLyric;
+    undoScroll = lyricArea.scrollLeft;    
+    undoCount = undoStack.push([undoLines, undoLyrics, tabLyr, undoCursor, undoScroll]);
+    lines = [];
+    repop = redoStack.pop();
+    undoLines = repop[0];
+    if (!undoLines[0]) undoLines = (" ").repeat(tabStrings - 1).split(" ");
+    lyricText = repop[1];
+    lyricArea.value = lyricText + extendTail;
+    makeBarNums();    
+    lines = undoLines.slice();
+    redoCount = redoStack.length;
+    tabFound = true;
+    showLines();
+    convertTab();
+    tabLyr = repop[2];
+    lyricArea.scrollLeft = repop[4];    
+    if (tabLyr === "TabIn") {
+      tabArea.focus();      
+      tabArea.setSelectionRange(repop[3], repop[3]);
+      locateTabCursor();
+      playCursor(cursorPos, cursorPos);      
     }
-    else tabFound = false;
-    badLines = lines.slice();
-    goodLines = prevLines.slice();
-    //
-  } // find lines that match start
+    else {
+      lyricArea.setSelectionRange(repop[3], repop[3]);
+      lyricArea.focus();
+    }
+    lyricArea.scrollLeft = repop[4];
+    playPrep();    
+  }
+
+  function doStuff() {
+    if (undoing) return;
+    tabLyr = document.activeElement.id; //which text changed
+    undoCursor = (tabLyr === "TabIn") ? cursorWhere : cursorLyric;
+    if (!tabLyr){
+      tabLyr = "TabIn";
+      undoCursor = 0;
+    }
+    undoScroll = lyricArea.scrollLeft;
+    redoStack = [];
+    redoCount = 0;
+    undoLines = lines.slice();
+    undoLyrics = lyricText;
+    undoCount = undoStack.push([undoLines, undoLyrics, tabLyr, undoCursor, undoScroll]);
+  }
+
+  function dropFile(e) {
+    e.preventDefault();
+    var file = e.dataTransfer.files[0];
+    var reader = new FileReader();
+    reader.onload = function(event) {
+      var text = event.target.result;
+      tabArea.value = text;
+      ctabOut.innerHTML = "";
+      append = false;
+      newLines = tabArea.value.replace(/(\r\n|\n|\r)/gm, "\n").split("\n");
+      undoing = false;
+      findTab();
+      document.getElementById("songTitle").innerHTML = file.name;
+    };
+    reader.readAsText(file);
+    return false;
+  }
   
-  function stringNames (){
-    var i, strSplit = [], strText =
-` e|
+  function openFile() {   
+    readFile(this.files[0], function(e) {
+      var text = e.target.result;
+      locateTabCursor();      
+      tabArea.value = text;
+      prevLines = lines.slice();      
+      newLines = tabArea.value.replace(/(\r\n|\n|\r)/gm, "\n").split("\n");
+      if (lines.length < 1 || lines[0].length < 2) { //empty
+        append = false;
+        undoing = false;
+        findTab();
+      } else {
+        for (var i = 0; i < tabStrings; i++) { //separate sections
+          prevHead[i] = prevLines[i].slice(0, cursorPos);
+          prevTail[i] = prevLines[i].slice(cursorPos);
+        }
+        append = true;
+        undoing = false;
+        findTab();
+      }      
+      document.getElementById("songTitle").innerHTML = songFile.split(".txt")[0];
+    });
+    songFile = this.files[0].name;
+    document.getElementById("chooseFile").value = "";
+  }
+
+  function readFile(file, onLoadCallback) {
+    var reader = new FileReader();
+    reader.onload = onLoadCallback;
+    reader.readAsText(file);
+  }
+
+  function pasteLyrics() {
+    if (event.repeat) return;
+    let paste = (event.clipboardData || window.clipboardData).getData("text");
+    var prevLyric = trimTail(lyricArea.value);
+    var newHead = prevLyric.slice(0, lyricArea.selectionStart);
+    var newTail = prevLyric.slice(lyricArea.selectionEnd);
+    paste = paste.replace(/(\r\n|\n|\r|\t)/gm, " ");
+    lyricText = newHead + paste + newTail;
+    lyricArea.value = lyricText;
+    if (barFrom === "Tab") lyricBarsFromTab();
+    if (barFrom === "Lyr") tabBarsFromLyrics(lyricText);
+    event.preventDefault();
+    cursorLyric = lyricArea.selectionStart;
+    lyricArea.setSelectionRange(cursorLyric, cursorLyric);
+  }
+
+  function tabBarsFromLyrics(lt) { //create bars in tab from lyrics
+    //var lt = lyricText;
+    if (event.key === "Home" || event.key === "End") return;
+    var i, j, k, u = false,
+      merged = [],
+      barless = [],
+      showText = "";
+    var tabLines = tabArea.value.split("\n");
+    tabLines[tabStrings - 1] = trimTail(tabLines[tabStrings - 1]);
+    var tabLen = tabLines[0].length;   
+    lt = lt.padEnd(tabLen, " ");
+    var bars = lt.split("|").length;
+    for (i = 0; i < tabLines.length; i++) {
+      barless[i] = tabLines[i].replace(/[\|]/g, "").padEnd(lt.length - bars, "-") + "-";
+    }
+    for (j = 0; j < tabLines.length; j++) { //each string
+      merged[j] = "";
+      k = 0; //tabline char
+      for (i = 0; i < lt.length; i++) { // each lyric char
+        if (lt[i] === "|") {
+          merged[j] += "|";
+        } else {
+          while (/[\u2000-\uffff]/.test(barless[j][k])) {
+            u = true;
+            merged[j] += barless[j][k];
+            k++;
+          } // unicode
+          if (!u) {
+            merged[j] += barless[j][k];
+            k++;
+          }
+          u = false;
+        }
+      }
+    }
+    for (i = 0; i < tabLines.length - 1; i++) {
+      showText += merged[i] + "\n";
+    }
+    showText += merged[tabLines.length - 1] + extendTail;
+    tabArea.value = showText;
+    lyricText = lt;
+    lyricArea.value = lt + extendTail;
+    makeBarNums();
+    getTabIn();    
+    lyricArea.setSelectionRange(cursorLyric, cursorLyric);
+  }
+  
+  function thisBarIns() { //increase size of current bar, keep others
+    var i, thisBar = 0;
+    var tabBars = [];
+    var tabV = [];
+    var tabBarsWithNotes = [];    
+    var notePad = 0;
+    var tLen, lLen;
+    var tabBarStrings = []; //= tabArea.value.split("\n")[tabStrings - 1].split("|");
+    var lyrBars = (trimTail(lyricArea.value)).split("|");
+    tabSplit = (trimTail(tabArea.value)).split("\n");
+    if (tabSplit.length < tabStrings) return;
+    for (i = 0; i < tabStrings; i++) {
+      tabBarStrings[i] = tabSplit[i].split("|");
+    }
+    tabBars = tabSplit[0].split("|");
+    tabBarsWithNotes = tabSplit[0].split("|");    
+    for (i = 0; i < tabBars.length; i++) {
+      if (tabBars[i].length !== lyrBars[i].length) break;
+    }
+    i !== tabBars.length ? thisBar = i : thisBar = 0;
+    lLen = lyrBars[thisBar].length;
+    tLen = tabBars[thisBar].length;
+    notePad = tabBarsWithNotes[thisBar].length - tLen;//excess length due to notes
+    if (lLen > tLen) { //lyric insert or tab del
+      for (i = 0; i < tabStrings; i++) {
+        tabBarStrings[i][thisBar] =
+          tabBarStrings[i][thisBar].padEnd(lLen + notePad, " ");
+        if (document.activeElement.id === "TabIn") setSelStart = cursorWhere;
+        setSelEnd = setSelStart;
+      }
+    } 
+    else if (tLen > lLen) { //tab insert or lyr del
+      if (tabBars[thisBar].slice(tLen - 1).charCodeAt(0) === 32) { // lose blank end
+        for (i = 0; i < tabStrings; i++) {
+          tabBarStrings[i][thisBar] =
+            tabBarStrings[i][thisBar].slice(0,lLen + notePad);         
+        }
+        if (document.activeElement.id === "TabIn") setSelStart = cursorWhere;
+        setSelEnd = setSelStart;
+      }
+      else lyrBars[thisBar] = lyrBars[thisBar].padEnd(tLen, " ");
+    }
+    for (i = 0; i < tabStrings; i++) {
+      tabV[i] = tabBarStrings[i].join("|");
+    }    
+    tabArea.value = tabV.join("\n");
+    lyricText = lyrBars.join("|");
+    lyricArea.value = lyricText + extendTail;
+    makeBarNums();
+    getTabIn();  
+    if (document.activeElement.id === "LyricIn") lyricArea.setSelectionRange(cursorLyric, cursorLyric);
+    if (document.activeElement.id === "TabIn") tabArea.setSelectionRange(setSelStart, setSelStart);
+  }
+
+  function lyricBarsFromTab() { //create bars in lyrics from tab
+    var lt = trimTail(lyricArea.value);
+    var tabLine = tabArea.value.split("\n", 1)[0];
+    lt = lt.padEnd(tabLine.length);
+    var barless = lt.replace(/[\|]/g, ""); //.padEnd(tabLine.length,"@");
+    var i, j = 0,
+      merged = "";
+    for (i = 0; i < tabLine.length; i++) {
+      if (tabLine[i] === "|") {
+        merged += "|";
+      } else {
+        merged += barless[j];
+        j++;
+      }
+    }
+    merged += barless.slice(j);
+    merged = merged.slice(0, tabLine.length); //always match lengths
+    lyricArea.value = merged + extendTail;
+    lyricText = merged;
+    makeBarNums();
+    if (event && document.activeElement.id === "LyricIn") {
+      var moveLeft = (event.key === "Backspace") ||
+          (event.key === "ArrowLeft") ||
+          (event.key === "Left");
+      var moveRight = (event.key === "ArrowRight") || (event.key === "Right");
+      if (!moveLeft &&  !moveRight && merged[cursorLyric - 1] === "|") cursorLyric++;
+      if (!moveLeft &&  !moveRight && merged.slice(cursorLyric - 2, cursorLyric) === "||")
+        cursorLyric++;
+      if (!moveLeft &&  !moveRight && merged.slice(cursorLyric - 3, cursorLyric) === "|||")
+        cursorLyric++; 
+      keepScrollPlace();
+      doStuff();
+      prepCt();
+    }
+  }
+
+  function makeBarNums() {
+    var i,j = 1,k = 0,n;
+    var measureNums = "";
+    lyricTextBars = lyricText.split("|");
+    for (i = 0; i < lyricText.length;i++){
+      if (lyricText[i] === "|" && lyricText[i + 1] !== "|" &&
+         measureNums.length < lyricText.length - 1) {
+        n = j.toString();
+        measureNums += n;
+        k = n.length - 1;
+        j++;
+      }
+      else {
+        if (k <= 0) measureNums += " ";
+        else k--;
+      }
+    }
+    measureNums = measureNums.padEnd(lyricText.length," ");
+    barNumb.innerHTML = measureNums + extendTail;
+    noteSelect(selStart, selEnd);
+    var count = 0;
+    for (i = 0; i < lyricTextBars.length; i++) {
+      if (lyricTextBars[i].length > 0) count++;
+      if (lyricTextBars[i - 1] && lyricTextBars[i - 1].length === 0 && lyricTextBars[i].length === 0) count++;
+      ctBars[i] = count;
+    }
+    var bars = lyricText.replace(/(\|\|)/g, "| ").split("|"); //parts|| and bars| are measures
+    for (i = 0; i < bars.length; i++) {
+      barChars[i] = bars[i].length + 1;
+      if (barChars[i-1]) barChars[i] += barChars[i-1]; //cum      
+    }
+    var parts = lyricText.split("||");
+    for (i = 0; i < parts.length; i++) {
+      partChars[i] = parts[i].length + 2;
+      if (partChars[i-1]) partChars[i] += partChars[i-1]; //cum
+    }
+  }
+  
+  function partScroll() {
+    var i; 
+    for (i = 0; i < partChars.length; i++) {
+      if (charWidth * partChars[i] > lyricArea.scrollLeft) break;
+    }
+    return i;    
+  }
+  
+  function barScroll() {
+    var i; 
+    for (i = 0; i < barChars.length; i++) {
+      if (charWidth * barChars[i] > lyricArea.scrollLeft) break;
+    }
+    return i;
+  }
+
+  function moveLyricBars() { //|'s from lyrics change bar length
+    var ltBars = lyricArea.value.split("|");
+    var tBars = (tabArea.value.split("\n")[0]).split("|");
+    if (!(tBars[0])) return;
+    for (var i = 0; i < ltBars.length; i++) {
+        ltBars[i] = ltBars[i].padEnd(tBars[i].length);
+        ltBars[i] = ltBars[i].slice(0, tBars[i].length);
+    }
+    lyricText = ltBars.join("|");
+    lyricArea.value = lyricText + extendTail;
+  }
+
+  function insLyric() {
+    var isDel = (event.key === "Delete") || (event.key === "Del");
+    if (!isDel) cursorLyric++;
+    if (barFrom === "Off" && isDel &&
+        lyricArea.value[cursorLyric] === "|") event.preventDefault();
+    noteSelect(cursorLyric, cursorLyric);
+  }
+
+  function insLyricBar() { // | from numpad /
+    event.preventDefault();
+    if (barFrom === "Tab" || barFrom === "Off") {
+      return;
+    }
+    var lyricBar = "";
+    lyricBar = lyricArea.value.slice(0, cursorLyric) + "|" +
+      lyricArea.value.slice(cursorLyric);
+    lyricArea.value = lyricBar;
+    cursorLyric += 1;
+    lyricArea.setSelectionRange(cursorLyric, cursorLyric);
+    noteSelect(cursorLyric, cursorLyric);    
+  }
+
+  function bkspLyric() {
+    var lyricDel = "";
+    event.preventDefault();
+    if (cursorLyric === 0) return;
+    if (barFrom === "Off" && lyricArea.value[cursorLyric - 1] === "|") return;
+    lyricDel = lyricArea.value.slice(0, cursorLyric - 1) + lyricArea.value.slice(cursorLyric);
+    lyricArea.value = lyricDel;
+    cursorLyric -= 1;
+    lyricArea.setSelectionRange(cursorLyric, cursorLyric);
+    noteSelect(cursorLyric, cursorLyric);    
+  }
+
+  function homeLyricKey() {
+    navKey = true;
+    event.preventDefault();
+    cursorLyric = 0;
+    lyricArea.setSelectionRange(0, 0);    
+    lyricArea.scrollLeft = 0;
+    noteSelect(0,0);
+  }
+
+  function endLyricKey() {
+    navKey = true;
+    event.preventDefault();
+    var end = lyricArea.value.length - extendTail.length;
+    cursorLyric = end;
+    if (barFrom === "Tab") cursorLyric--;
+    lyricArea.scrollLeft = lyricArea.scrollWidth;
+    lyricArea.setSelectionRange(end, end);
+    noteSelect(end,end);
+  }
+
+  function leftLyricArrow() {
+    navKey = true;
+    if (cursorLyric === 0) return;
+    cursorLyric -= 1;
+    noteSelect(cursorLyric, cursorLyric);
+  }
+
+  function rightLyricArrow() {
+    navKey = true;
+    cursorLyric += 1;
+    noteSelect(cursorLyric, cursorLyric);    
+  }
+
+  function barMaster() {
+    var sH = tabArea.scrollLeft;
+    var barMode = document.getElementById("barMode");
+    barFrom = barMode.value;
+    if (barFrom === "Lyr") {
+      lyricArea.focus();
+      lyricArea.style.background = 'white';
+      lyricArea.style.color = 'blue';
+      tabArea.blur();
+      tabBack.style.background = '#b6c7ff';
+      tabArea.style.color = 'blue';
+      barMode.style.color = '#b6c7ff';
+      //getTabIn();
+    } else if (barFrom === "Tab") {
+      tabArea.focus();
+      tabBack.style.background = 'white';
+      tabArea.style.color = 'white';
+      lyricArea.blur();
+      lyricArea.style.background = '#e8e8e8';
+      lyricArea.style.color = '#404040';
+      barMode.style.color = '#ddd';
+      //getTabIn();
+    }
+    else if (barFrom === "Off") {
+      lyricArea.focus();
+      lyricArea.style.background = 'white';
+      lyricArea.style.color = 'green';
+      tabArea.blur();
+      tabBack.style.background = '#b6ffc7';
+      tabArea.style.color = 'green';
+      barMode.style.color = '#b6ffc7';
+      //getTabIn();      
+    }
+    showColors--;
+    colorToggle();
+    lyricArea.scrollLeft = sH;
+    //tabArea.scrollLeft = sH;
+  }
+  
+  function tuneFocus() {
+    tuneArea.style.color = "black";
+    tuneArea2.style.display = "none";
+    tuneBack.style.background = 'white';
+    var tstripes = document.getElementsByClassName("tstripe");    
+    for(var i = 0; i < tstripes.length; i++) {
+      tstripes[i].style.display = 'none';
+    }
+    tuneArea.focus();
+  }
+
+  function tuneBlur() {
+    showColors--;
+    colorToggle();
+    tuneBack.style.background = '#e8e8e8';
+    var barLines = "";
+    var dashCol = "";
+    var i, j, col, startPos, ok = false;
+    var tuneLines = tuneArea.value.split("\n");
+    for (i = 0; i < tabStrings; i++) {
+      barLines += "|";
+      dashCol += "-";
+    }
+    for (i = 0; i < startCharLen; i++) {
+      col = "";
+      for (j = 0; j < tabStrings; j++) {
+        col += tuneLines[j][i];
+      }
+      if (!ok && col === barLines) {
+        startPos = i;
+        ok = true;
+      }
+      if (!ok && col === dashCol) {
+        startPos = i;
+        ok = true;
+      }
+    }
+    if (ok) {
+      for (i = 0; i < tabStrings; i++) {
+        startTab[i] = tuneLines[i].slice(0, startPos + 1).padStart(startCharLen);
+      }
+      tuneArea2.value = tuneArea.value;
+      getTabIn();
+    } else {      
+      tuneFail();
+      tuneArea.value = startTab.join("\n");      
+    }
+  }
+
+  function tuneFail() {
+    var msg = `<h2>Can't use strings   </h2><p>Must have a column of | or -
+
+These examples are ok
+if they match your tab
+
+eb|  e-|   e|  e |   e-   |  -
+Bb|  B-|   B|   B|  c#-   |  -
+Gb|  G-|   G|  g |  a -   |  -
+Db|  D-|   D|   D|   e-   |  -
+Ab|  A-|   A|  a |   A-   |  -
+Eb|  E-|  Eb|  Eb|   E-   |  -
+
+Spa ces and CaPiTals are ok
+</p>` + tuneArea.value;
+    document.getElementById("message").innerHTML = msg;
+    document.getElementById("msgdiv").style.display = "block";
+    document.getElementById("msgdiv").focus();
+  }
+
+  function tuneKey() {
+    if (event.key === "Enter") { //exit if enter
+      event.preventDefault();
+      tuneArea.blur();
+      return;
+    }
+    if (event.key === "Delete" || event.key === "Del") event.preventDefault();   
+    var where = tuneArea.selectionStart;
+    if (where >= tabStrings * 4 - 1 &&
+      event.key !== "ArrowUp" &&
+      event.key !== "ArrowLeft" &&
+      event.key !== "Up" &&
+      event.key !== "Left") { //limit size
+      event.preventDefault();
+      return;
+    }
+    var pos = where % 4;
+    var move = 0;
+    if (event.key === "ArrowLeft" ||
+        event.key === "Left" ||
+        event.key === "Backspace") where -= 1; //left bksp     
+    if (event.key === "Backspace") {
+      event.preventDefault();
+      move = -1;
+    }     
+    if (pos === 3 &&
+        event.key !== "ArrowRight" &&
+        event.key !== "Right" &&
+        event.key !== "Left" &&
+        event.key !== "Down" &&
+        event.key !== "ArrowLeft" &&
+        event.key !== "ArrowDown") move = 1; //skip line ends     
+    tuneArea.setSelectionRange(where + move, where + 1 + move); //overtype
+  }
+
+  function changeStrings() {
+    if (notEmpty()) saveFile();
+    const numberOfStrings = document.getElementById("numStrings");
+    instrument = numberOfStrings.value;
+    startTab = newStrings(instrument);
+    if (document.getElementById("instr")) 
+      document.getElementById("instr").innerHTML = " " + instrument.slice(2);
+    tabStrings = startTab.length;
+    tabArea.value = "|\n".repeat(tabStrings - 1) + "|";
+    tuneArea.value = startTab.join("\n");
+    tuneArea2.value = startTab.join("\n");    
+    tuneArea.rows = tabStrings;
+    showColors = 2;
+    colorToggle();
+    lines = tabArea.value.split("\n");
+    if (showPitch) {
+      pitchToggle();
+      pitchShift = ["",0,0,0,0,0,0,0,0,0];
+      pitchToggle();
+    }
+    else pitchShift = ["",0,0,0,0,0,0,0,0,0];
+    lyricText = "";
+    undoStack = [];
+    redoStack = [];
+    doStuff();
+    tabArea.rows = tabStrings;
+    tuneArea2.style.height = height2;
+    tabArea2.style.height = height2;
+    checkChange();
+  }
+  
+  function locateLyricCursor() {
+    cursorLyric = lyricArea.selectionStart;
+    cursorSplit = (cursorLyric / lyricArea.value.length) * lyricArea.scrollWidth;
+    cursorPlace = cursorSplit - lyricArea.scrollLeft;    
+  }
+
+  function lyricKeyDown() {
+    locateLyricCursor();
+    oldPlace = cursorPlace;
+    if (event.key === "Enter") {
+      event.preventDefault();
+      insLyricBar();
+    } 
+    else if (event.key === " ") insLyric();
+    else if (event.key === "ArrowLeft") leftLyricArrow();
+    else if (event.key === "Left") leftLyricArrow();    
+    else if (event.key === "ArrowRight") rightLyricArrow();
+    else if (event.key === "Up") upLyricArrow();
+    else if (event.key === "ArrowUp") upLyricArrow();
+    else if (event.key === "Right") rightLyricArrow();
+    else if (event.key === "Backspace") bkspLyric();
+    else if (event.key === "End") endLyricKey();
+    else if (event.key === "Home") homeLyricKey();
+    else if (event.key === "Divide") insLyricBar();
+    else if (event.key === "|") insLyricBar();    
+    else if (event.key === "PageUp" || event.key === "Undo") {
+      event.preventDefault();
+      undoKey = true;
+      undo();
+    }
+    else if (event.key === "PageDown" || event.key === "Redo") {
+      event.preventDefault();
+      undoKey = true;
+      redo();
+    }
+    else if (event.key === "Escape" || event.key === "Esc") {
+      event.preventDefault();
+      document.getElementById("barMode").value = "Off"; 
+      barMaster();      
+    }
+    else if (event.key === "Tab") {
+      event.preventDefault();
+      document.getElementById("barMode").value = "Tab"; 
+      barMaster();      
+    }
+    else if (event.key === "Alt") {
+      if (event.shiftKey) {
+        event.preventDefault();
+        document.getElementById("barMode").value = "Lyr"; 
+        barMaster();        
+      }      
+    }
+    else {
+      insLyric()
+    }
+  }
+  
+  function upLyricArrow() { //switch to tab area
+    navKey = true;
+    setSelStart = lyricArea.selectionStart;
+    setSelEnd = setSelStart;
+    lyricArea.blur();
+    tabArea.focus();
+  }
+
+  function lyricKeyUp(e) {
+    if (navKey || undoKey) {
+      navKey = false;
+      undoKey = false;
+      keepScrollPlace();
+      return;
+    }
+    if (document.activeElement.id !== "LyricIn") return;
+    if (e.key === "Shift" || e.key == "Control" ||
+        e.key == "Escape" || e.key === "Alt") return;
+    if (barFrom === "Tab") {
+      lyricBarsFromTab();
+    } 
+    else if (barFrom === "Lyr") {
+      tabBarsFromLyrics(trimTail(lyricArea.value));
+    }
+    else if (barFrom === "Off") {
+      thisBarIns();
+    }
+  }
+
+  function tabMouseUp() {
+    event.stopPropagation();
+    mouseDown = false;
+    if (mouseDown2) {
+      mouseDown2 = false;
+      tab2MouseUp();
+      return;
+    }
+    var trimLen;
+    var where = tabArea.selectionStart;
+    var there = tabArea.selectionEnd;
+    var tabSplit = tabArea.value.split("\n");
+    tabSplit[tabStrings - 1] = trimTail(tabSplit[tabStrings - 1]);
+    trimLen = tabSplit.join("\n").length;
+    if (where > trimLen) {
+      where = trimLen;
+      there = where;
+    }
+    lineLen = tabSplit[0].length + 1;
+    var lineInt = Math.floor(where / lineLen);
+    var pos1 = where % (lineLen);
+    var pos2 = there % (lineLen);
+    window.getSelection().collapse(null);
+    tabArea.selectionStart = pos1 + lineInt * lineLen;
+    tabArea.selectionEnd = pos2 + lineInt * lineLen;
+    tabArea2.scrollTop = 0;
+    noteSelect(pos1,pos2);
+    if (where === there) 
+      soundNewNote(tabArea.value.slice(where, where + 1),lineInt,where);
+  }
+  
+  function tab2MouseUp() {
+    event.stopPropagation();
+    mouseDown = false;
+    if (mouseDown1) {
+      mouseDown1 = false;
+      tabMouseUp();
+      return;
+    }    
+    var trimLen;
+    var where = tabArea2.selectionStart;
+    var there = tabArea2.selectionEnd;
+    var tabSplit = tabArea2.value.split("\n");
+    tabSplit[tabStrings - 1] = trimTail(tabSplit[tabStrings - 1]);
+    trimLen = tabSplit.join("\n").length;
+    if (where > trimLen) {
+      where = trimLen;
+      there = where;
+    }
+    lineLen = tabSplit[0].length + 1;
+    var lineInt = Math.floor(where / lineLen);
+    var pos1 = where % (lineLen);
+    var pos2 = there % (lineLen);
+    tabArea.focus();
+    window.getSelection().collapse(null);    
+    tabArea.selectionStart = pos1 + lineInt * lineLen;
+    tabArea.selectionEnd = pos2 + lineInt * lineLen;
+    tabArea2.focus();
+    tabArea2.selectionStart = pos1 + lineInt * lineLen;
+    tabArea2.selectionEnd = pos2 + lineInt * lineLen;
+    tabArea2.scrollTop = 0;
+    noteSelect(pos1,pos2);
+    if (where === there) 
+      soundNewNote(tabArea.value.slice(where, where + 1),lineInt,where);
+  }
+  
+  function barMouseDown() {
+    window.getSelection().collapse(null); //clear previous to prevent drag 
+  }  
+  
+  function barMouseUp() {
+    var sel = window.getSelection();
+    var r = sel.getRangeAt(0);   
+    noteSelect(r.startOffset, r.endOffset);
+    lyricArea.scrollLeft = barNumb.scrollLeft;
+    window.getSelection().collapse(null);
+  }
+
+  function lyricMouseUp() {
+    event.stopPropagation();
+    var trimLen = trimTail(lyricArea.value).length;
+    var where = lyricArea.selectionStart;
+    var there = lyricArea.selectionEnd;
+    window.getSelection().collapse(null);    
+    if ((where > trimLen) || (there > trimLen)) {
+      where = trimLen;
+      there = trimLen;
+    }
+    lyricArea.setSelectionRange(where, there);
+    noteSelect(where,there);
+  }
+  
+  function lyricFocus() {
+    if (tabArea.value.split("\n").length < 3) {
+      locateTabCursor();
+      document.getElementById("barMode").value = "Lyr"; 
+      barMaster(); //auto lyric mode
+      return;
+    }     
+    if (barFrom === "Lyr") {
+      event.target.style.color = "blue";
+      event.target.style.background = 'white';
+    } else if (barFrom === "Tab") {     
+      event.target.style.background = 'white';
+      event.target.style.color = 'black';
+    }
+    else if (barFrom === "Off") {     
+      event.target.style.background = 'white';
+      event.target.style.color = 'green';
+    }
+  }
+
+  function lyricBlur() {
+    lastBlur = "lyric";
+    if (barFrom === "Lyr") {
+      event.target.style.color = "blue";
+      event.target.style.background = "#b6c7ff";
+    } else if (barFrom === "Tab") {
+      event.target.style.background = '#e8e8e8';
+      event.target.style.color = '#404040';
+    }
+    else if (barFrom === "Off") {     
+      event.target.style.background = '#b6ffc7';
+      event.target.style.color = '#004000';
+    }    
+  }
+
+  function tabFocus() {
+    if (barFrom === "Lyr") {
+      tabBack.style.color = "blue";
+      tabBack.style.background = "white";
+    } else if (barFrom === "Tab") {      
+      tabBack.style.background = 'white';
+      tabBack.style.color = 'black';
+    }
+    else if (barFrom === "Off") {     
+      tabBack.style.background = 'white';
+      tabBack.style.color = 'green';
+    }    
+  }
+
+  function tabBlur() {
+    lastBlur = "tab";
+    if (barFrom === "Lyr") {
+      tabArea.style.color = "blue";
+      tabBack.style.background = "#b6c7ff";
+    } else if (barFrom === "Tab") {
+      tabBack.style.background = '#e8e8e8';
+      showColors === 0 ? tabArea.style.color = '#fff' : tabArea.style.color = '#000';
+    }
+    else if (barFrom === "Off") {     
+      tabBack.style.background = '#b6ffc7';
+      tabArea.style.color = '#004000';
+    }    
+  }
+  
+  function tab2Blur() {
+    lastBlur = "tab2";
+    cursorWhere2 = tabArea2.selectionStart;
+    if (barFrom === "Lyr") {
+      tabArea.style.color = "blue";
+      tabBack.style.background = "#b6c7ff";
+    } else if (barFrom === "Tab") {
+      tabBack.style.background = '#e8e8e8';
+      tabArea.style.color = '#fff';
+    }
+    else if (barFrom === "Off") {     
+      tabBack.style.background = '#b6ffc7';
+      tabArea.style.color = '#004000';
+    }    
+  }
+  
+  function partClick() {
+    keepSections ? keepSections = false :  keepSections = true;
+    var addClass;
+    addClass = document.getElementById("kParts");
+    if (keepSections) addClass.setAttribute("class", "toggle black");
+    else addClass.setAttribute("class", "toggle off");    
+    checkChange();
+  }
+  
+  function barClick() {
+    keepMeasures ? keepMeasures = false : keepMeasures = true;
+    var addClass;
+    addClass = document.getElementById("kMeasures");
+    if (keepMeasures) addClass.setAttribute("class", "toggle black");
+    else addClass.setAttribute("class", "toggle off");    
+    checkChange();
+  }
+  
+  function dashClick() {
+    keepSpaces ? keepSpaces = false : keepSpaces = true;
+    var addClass;
+    addClass = document.getElementById("kSpaces");
+    if (keepSpaces) addClass.setAttribute("class", "toggle black");
+    else addClass.setAttribute("class", "toggle off");    
+    checkChange();
+  }
+  
+  function tunePaste() {
+    var i = 0, j;
+    event.preventDefault();
+    var newTune = [];
+    var paste = (event.clipboardData || window.clipboardData).getData("text");
+    paste = paste.split("\n");
+    for (j = 0; j < tabStrings * 2 + 2; j++) {
+      if (paste[j] && paste[j].trim().length > 0) {
+        newTune[i] = paste[j].slice(0,3);
+        i++;
+        if (i > tabStrings - 1) break;
+      }
+      
+    }
+    tuneArea.value = newTune.join("\n");
+    tuneBlur();
+  }  
+  
+  function docKey() {
+    locateTabCursor();
+    setSelStart = cursorWhere;
+    setSelEnd = cursorWhere; 
+    if (event.key === "Escape" || event.key === "Esc") {
+      event.preventDefault();
+      document.getElementById("barMode").value = "Off"; 
+      barMaster();      
+    }
+    else if (event.key === "F1") {
+      event.preventDefault();      
+      help();
+    }
+    else if (event.key === "Tab") {
+      event.preventDefault();
+      document.getElementById("barMode").value = "Tab"; 
+      barMaster();      
+    }
+    else if (event.key === "Alt") {
+      if (event.shiftKey) {
+        event.preventDefault();
+        document.getElementById("barMode").value = "Lyr"; 
+        barMaster();        
+      }      
+    }
+    else if (event.key === "y" && event.ctrlKey) {
+        event.preventDefault();
+        event.stopPropagation();      
+        undoKey = true;        
+        redo();   
+    }    
+    else if (event.key === "z" && event.ctrlKey) {
+        event.preventDefault();
+        event.stopPropagation();      
+        undoKey = true;        
+        undo(); 
+    }
+    else if (event.key === "PageDown" || event.key === "Redo") {
+        event.preventDefault();
+        event.stopPropagation();
+        undoKey = true;        
+        redo(); 
+    }
+    else if (event.key === "PageUp" || event.key === "Undo") {
+        event.preventDefault();
+        event.stopPropagation();
+        undoKey = true;        
+        undo(); 
+    }
+    else if (event.key === " ") {
+        paused = true; //stop play if running
+    }    
+  }
+  
+  function docKeyUp() {
+    if (oType) {//nothing to do for overtype keys
+      event.stopPropagation();
+      oType = false;
+      return;
+    }
+    if (!(event.key === "Shift" || event.key === "Control" || event.key === "Alt" || event.key === "Escape")) return;
+    setSelStart = cursorWhere;
+    setSelEnd = setSelStart;
+    keepScrollPlace();
+  }
+  
+  function debugToggle() {
+    var d = document.getElementById("showdebugs");
+    var e = document.getElementById("debugtimes");
+    d.className.includes("off") ? d.setAttribute("class","black")
+     : d.setAttribute("class","off");
+    d.className.includes("off") ? e.style.display = "block" : e.style.display = "none";
+   }
+  
+  function docMouseUp(){
+    if (document.activeElement.id === "TabIn" || document.activeElement.id === "TabIn2")
+      window.getSelection().collapse(null);
+  }
+  
+  function nextBar() {   
+    var m;
+    for (var i = 0; i < measureFirsts.length; i++) {
+      m = measureFirsts[i] - 3;
+      if (m > selStart) {
+        noteSelect(m, m);
+        break;
+      }
+    }
+  }
+  
+  function prevBar() {   
+    var m;
+    for (var i = 0; i < measureFirsts.length; i++) {
+      m = measureFirsts[measureFirsts.length - i - 1] - 3;
+      if (m < selStart) {
+        noteSelect(m, m);
+        break;
+      }
+    }
+  }
+  
+  function gotoShow() {
+    document.getElementById("gotoDiv").style.display = "block";
+  }
+  
+  function gotoClose() {
+    document.getElementById("gotoDiv").style.display = "none";
+  }
+    
+  function gotoBar() {
+    var n = document.getElementById("barnumber").value;
+    var m = n;
+    if (m > measureFirsts.length) m = measureFirsts.length;
+    if (m < 0) m = 0;
+    noteSelect(measureFirsts[m - 1] - 3,measureFirsts[m - 1] - 3);
+    loop = false;
+    document.getElementById("loopbtn").setAttribute("class", "transport black");    
+  }
+  
+  function gotoEnd() {
+    paused = true;
+    loop = false;
+    document.getElementById("loopbtn").setAttribute("class", "transport black");    
+    noteSelect(ctNotePos[ctNotePos.length - 1],ctNotePos[ctNotePos.length - 1]);
+  }
+  
+  function addEvents() {
+    document.addEventListener("mouseup",docMouseUp);
+    var debugbutton = document.getElementById("showdebugs");
+    if (debugbutton) debugbutton.addEventListener("click", debugToggle);
+    document.getElementById("fwdbutton").onclick = nextBar;
+    document.getElementById("revbutton").onclick = prevBar;
+    document.getElementById("gotoM").onclick = gotoShow;
+    document.getElementById("gonow").onclick = gotoBar;    
+    document.getElementById("nogo").onclick = gotoClose;
+    document.getElementById("gotoend").onclick = gotoEnd;
+    document.getElementById("pitchstrum").onclick = strum;
+    document.getElementById("pitchclose").onclick = closepitch;
+    document.getElementById("pretune").onchange = shiftTune;
+    var table = document.getElementById("tnotes");
+    for (var i = 0; i < table.rows.length; i++) {
+      for (var j = 0; j < table.rows[i].cells.length; j++)
+      table.rows[i].cells[j].onclick = function () {tableText(this);};
+    } ;//add events
+    for (i = 1; i < 10; i++) {
+      ptable.rows[i].cells[2].onclick = function () {readPitches();};
+    }
+    document.getElementById("capo").onchange = capoChange;
+    document.getElementById("metro").onclick = metroToggle;
+
+    document.addEventListener("keydown", docKey, true); //use capture 
+    document.addEventListener("keyup", docKeyUp); //use capture
+    tuneArea.addEventListener("keydown", tuneKey);
+    tuneArea.addEventListener("focus", tuneFocus);
+    tuneArea2.addEventListener("focus", tuneFocus);
+    tuneArea.addEventListener("blur", tuneBlur);    
+    tuneArea.addEventListener("paste", tunePaste);
+    lyricArea.addEventListener("paste", pasteLyrics);
+    lyricArea.addEventListener("keydown", lyricKeyDown);
+    lyricArea.addEventListener("keyup", lyricKeyUp);
+    lyricArea.addEventListener('focus', lyricFocus);
+    lyricArea.addEventListener('blur', lyricBlur);
+    lyricArea.addEventListener("mouseup", lyricMouseUp);    
+    lyricArea.onscroll = linkScroll;
+    lyricArea.addEventListener("wheel", scrollHorizontally);    
+    lyricArea.addEventListener("dragover", function(e) {
+      e.preventDefault();
+    });
+    lyricArea.addEventListener("dragstart", function(e) {
+      e.preventDefault();
+    });
+    document.getElementById("menuTog").onclick = menuToggle;
+    document.getElementById("pitchbutton").onclick = pitchToggle;
+    document.getElementById("editButton").onclick = editClick;    
+    document.getElementById("cutButton").onclick = cutTab;
+    document.getElementById("copyButton").onclick = copyTab;
+    document.getElementById("addButton").onclick = addTab;
+    document.getElementById("noteButton").onclick = noteToggle;
+    document.getElementById("colorButton").onclick = colorToggle;    
+    document.getElementById("codaButton").onclick = tableToggle;    
+    document.getElementById("moreSpace").onclick = spread;
+    document.getElementById("lessSpace").onclick = squeeze;
+    document.getElementById("helpButton").onclick = help;
+    document.getElementById("helpText").onclick = help;
+    document.getElementById("bck").onclick = undo;
+    document.getElementById("fwd").onclick = redo;
+    document.getElementById("savFile").onclick = saveFile;
+    document.getElementById("savtxt").onclick = saveTextFile;
+    document.getElementById("numStrings").onchange = changeStrings;
+    document.getElementById("barMode").onchange = barMaster;
+    document.getElementById("songTitle").onchange = noDownlink;
+    document.getElementById("kSpaces").onclick = dashClick;
+    document.getElementById("kParts").onclick = partClick;
+    document.getElementById("kMeasures").onclick = barClick;
+    document.getElementById("chooseFile").onchange = openFile;
+    window.addEventListener("resize", prepThrottle);   
+    window.addEventListener("dragover", function(e) {
+      e.preventDefault();
+    }, false);
+    window.addEventListener("drop", function(e) {
+      e.preventDefault();
+    }, false);
+    tabArea.addEventListener('keydown', keyDownHandler);
+    tabArea2.addEventListener('keydown', keyDown2);    
+    tabArea.addEventListener('input', inputHandler);
+    tabArea.addEventListener('keyup', keyUpHandler);
+    tabArea2.addEventListener('keyup', keyUpHandler);    
+    tabArea.addEventListener("paste", pasteTab);
+    tabArea2.addEventListener("paste", pasteTab);
+    tabArea.ondrop = dropFile;
+    tabArea.addEventListener("dragover", function(e) {
+      e.preventDefault();
+    });
+    tabArea2.addEventListener("dragover", function(e) {
+      e.preventDefault();
+    });    
+    tabArea.addEventListener("dragstart", function(e) {
+      e.preventDefault();
+    });
+    tabArea.addEventListener("mouseup", tabMouseUp);
+    tabArea.addEventListener("mousedown", tabMouseDown);
+    tabArea2.addEventListener("mouseup", tab2MouseUp);
+    tabArea2.addEventListener("mousedown", tab2MouseDown,true);
+    barNumb.addEventListener("mousedown", barMouseDown);
+    barNumb.addEventListener("mouseup", barMouseUp);
+    ctabOut.addEventListener("mouseup", ctMouseUp);
+    tabArea.addEventListener('focus', tabFocus);
+    tabArea2.addEventListener('focus', tabFocus);    
+    tabArea.addEventListener('blur', tabBlur);
+    tabArea2.addEventListener('blur', tab2Blur);    
+    tabArea.onscroll = linkScroll;
+    tabArea2.onscroll = linkScroll;
+    //************barNumb.onscroll = linkScroll;
+    tabArea.addEventListener("wheel", scrollHorizontally);
+    tabArea2.addEventListener("wheel", scrollHorizontally);    
+    document.getElementById("msgdiv").onclick = noModal;
+    document.getElementById("msgdiv").onkeypress = noModal;
+    barNumb.onscroll = barNumbScroll;
+
+    var playButton = document.getElementById("play");
+    var loopBtn = document.getElementById("loopbtn");
+    var soundfont = new Soundfont(ctx);
+    var soundfont2 = new Soundfont(ctx);    
+    var instName = document.getElementById("instrsf");
+    instName.setAttribute("disabled", true);
+    var instChoice = "offline";
+    var sfChoose = document.getElementById("sfont");
+    var sfChoice = "MusyngKite/";
+    var inst = soundfont.instrument(instChoice);
+    var metroInst = soundfont2.instrument("offline"); 
+    var sfReady = true;
+    let playTimer;//poll doneYet during play
+    var lookahead = 25.0;//ms until next lookahead
+    var scheduleAheadTime = 0.1;//window of note to schedule in seconds
+    
+    instName.addEventListener("change", function(e) {
+      instChoice = e.target.value;
+      instChoice === "offline" ? sfChoice = "" : sfChoice = sfChoose.value;
+      playButton.setAttribute("disabled", true);
+      sfReady = false;
+      inst = soundfont.instrument(sfChoice + instChoice);
+      inst.onready(function() {
+        playButton.removeAttribute("disabled");
+        sfReady = true;
+      });
+    });
+    
+    sfChoose.addEventListener("change", function(e) {
+      sfChoice = e.target.value;
+      if (sfChoice === "Offline") {
+        sfChoice = "";     
+        instChoice = "offline";
+        instName.selectedIndex = 0;
+        instName.setAttribute("disabled", true);
+      }
+      else {
+        sfReady = false;
+        instChoice = instName.value;
+        instName.removeAttribute("disabled");
+      }
+      playButton.setAttribute("disabled", true);
+      inst = soundfont.instrument(sfChoice + instChoice);
+      inst.onready(function() {
+        playButton.removeAttribute("disabled");
+        sfReady = true;
+      });
+    });
+    
+    loopBtn.addEventListener('click', () => {
+      if (loop) {
+        loop = false;
+        loopBtn.setAttribute("class", "transport black");
+        noteSelect(selStart,selStart);
+      }
+      else {
+        loop = true;
+        loopBtn.setAttribute("class", "transport off");       
+      }
+    });
+    
+    document.getElementById("notePlay").addEventListener("click",playSingle);
+    
+    function playSingle() {
+      ctx.resume();
+      if (singleThing.length === 2) {
+        inst.play(singleThing[0],ctx.currentTime,{ duration:0.5});
+        inst.play(singleThing[1],ctx.currentTime,{ duration:0.5});
+      }
+      else inst.play(singleThing,ctx.currentTime,{ duration:0.5});
+      setTimeout(waitDone,600);     
+    }
+    
+    function schedulePlay() {
+      var pitch, playClassIs, tooLate;   
+      while (nextNoteTime <  ctx.currentTime + scheduleAheadTime ) {
+        if (!playThings[nP]) {//stop on undefined
+          nextNoteTime = Infinity; 
+          nP = Infinity;
+          if (loop) {
+            loop = false;
+            loopBtn.innerHTML = "&#xeb23;"
+            loopBtn.style.backgroundColor = "#ddd";
+          }
+          continue;
+        }         
+        pitch = (playThings[nP][0].toString()).split(",");
+        tooLate = ctx.currentTime - scheduleAheadTime - nextNoteTime;
+        //console.log(["schedule", nP,playThings[nP][1],  nextNoteTime,tooLate, playEnd])
+        if (tooLate < 0) {
+          if (pitch[0] === "101" || pitch[0] === "102") {
+            metroInst.play(pitch,nextNoteTime,{ duration:playThings[nP][2], gain:3});
+          } else { 
+            if (sfReady) {
+              if (pitch.length === 2) {
+                  inst.play(pitch[0],nextNoteTime,{ duration:playThings[nP][2]});
+                  inst.play(pitch[1],nextNoteTime,{ duration:playThings[nP][2]});
+                }
+              else inst.play(pitch,nextNoteTime,{ duration:playThings[nP][2], gain:3});
+            }
+            else {//offline fallback
+              if (pitch.length === 2) {
+                  metroInst.play(pitch[0],nextNoteTime,{ duration:playThings[nP][2]});
+                  metroInst.play(pitch[1],nextNoteTime,{ duration:playThings[nP][2]});
+                }
+              else metroInst.play(pitch,nextNoteTime,{ duration:playThings[nP][2], gain:3});
+            }
+          }
+        }
+        if (playThings[nP][3]) { 
+          playClassIs = document.getElementById(playThings[nP][3]);
+          if (playClassIs) {
+            var noteClass = playClassIs.className;
+            if (noteClass.indexOf(" p") > -1) playClassIs.className = noteClass.replace(" p"," r");
+            else if (noteClass.indexOf(" r") > -1) playClassIs.className = noteClass.replace(" r"," p");
+            else playClassIs.className += " p";//highligh pos
+            
+          }
+        }
+        if (playThings[nP][4]) {
+          checkTempo(playThings[nP][4]);
+          playCursor(playThings[nP][4],playThings[nP][4]);
+          newScroll(playThings[nP][4]);
+          var scrollOptions = {left:0, top:0, behavior:"auto"}
+          var pid = document.getElementById(playThings[nP][3])
+          if (pid) var pty = pid.getBoundingClientRect().y;
+          if (pty) {
+            if (pty + 100 > window.innerHeight) {//down too far
+              if (pty > window.innerHeight) {//more than a little
+                scrollOptions["top"] = window.scrollY + pty - window.innerHeight / 2;
+                scrollOptions["behavior"] = "auto";
+              }
+              else scrollOptions = 
+                {left: 0, top: window.scrollY + 100, behavior: 'smooth'}
+              window.scrollTo(scrollOptions)
+            }//keep scroll above bottom during play
+            if (pty < 0) {
+              scrollOptions["top"] = window.scrollY + pty - window.innerHeight / 2;
+              scrollOptions["behavior"] = "auto";
+              window.scrollTo(scrollOptions)
+            }//keep new highlights on screen below top
+          }
+        }
+        lastTime = startTime + playThings[nP][1] + playThings[nP][2];
+        nP++;
+        if (nP < playEnd) {
+          nextNoteTime = playThings[nP][1] + startTime - pauseTime;
+        }
+        else nextNoteTime = Infinity;       
+      }
+    }; //schedule play   
+    
+    function doneYet() {// stops at end or loops
+      if (nP >= playEnd || paused) {
+        if (loop && !paused && songLength !== 0) {
+          barsHidden = 0;
+          partsHidden = 0;
+          prepCt();//clear highlights
+          noteSelect(selStart,selEnd);
+          nP = playStart;
+          if (playThings[nP]) pauseTime = playThings[nP][1];
+          nextNoteTime = lastTime - pauseTime;
+          startTime = nextNoteTime;
+         lyricArea.scrollLeft = 0;//************** //console.log(["loop","next",nextNoteTime,"start",startTime,"pause",pauseTime])
+        }
+        else { //stop
+          clearInterval(playTimer);
+          if (playThings[nP - 1]) //wait for last note to complete
+            setTimeout(waitDone,1000 * (playThings[nP - 1][2] + scheduleAheadTime)) 
+          else waitDone();//catch undefined note error
+          if (nP >= playEnd) {
+            playPrep();//********why?new notes?
+            //noteSelect(selStart,selEnd);
+          }
+        }
+      }
+      if (nP < songLength) schedulePlay();//not done!
+      //console.log("not done!",nP,songLength,nextNoteTime)
+    }
+    
+    function waitDone() {
+      ctx.suspend();
+      paused = true;
+      playButton.innerHTML = "&#xeb1c;";
+      playButton.style.background = "#000";
+      noteSelect(selStart,selEnd);
+      prepCt();
+      window.scrollTo(0,0);
+      //console.log(["done!",paused,ctx.currentTime])      
+    }
+
+    playButton.addEventListener('click', () => {
+      if (!playThings[0]) return;
+      showTable = 2;
+      tableToggle();//hide it
+      if (!(ctx.state === 'running')) {//play
+        showButtons = true;
+        menuToggle();//hide buttons for play
+        paused = false;
+        ctx.resume().then(function(){
+          if (nP === undefined || nP >= songLength) {
+            nP = 0;
+            pauseTime = 0;
+          }
+          prepCt();
+          if (playThings[nP]) pauseTime = playThings[nP][1];
+          startTime = ctx.currentTime;
+          nextNoteTime = startTime;
+          schedulePlay();
+          playTimer = setInterval(doneYet, lookahead);
+          playButton.innerHTML = "&#xeb1e;";
+          playButton.style.background = "#444";
+        })
+      }
+      else { //pause
+        paused = true;//done!!
+        playButton.focus();//restart with spacebar
+        if (playThings[nP]) pauseTime = playThings[nP][1];// time of next note
+        playButton.innerHTML = "&#xeb1c;";
+        playButton.style.background = "#444";
+      }
+      //console.log("playbutton",paused,nP,playStart,startTime,pauseTime)
+    });
+
+    document.getElementById("rewind").addEventListener('click', () => {
+        nP = 0;
+        window.scrollTo(0,0);
+        //startTime = lastTime;//**************?
+        startTime = ctx.currentTime;
+        loop = false;
+        barsHidden = 0;
+        partsHidden = 0;
+        loopBtn.setAttribute("class", "transport black");      
+        if (playThings[0]) nextNoteTime = playThings[0][1] + startTime;
+        noteSelect(0,0);
+      });
+
+  } //event listeners
+  
+  function noteSelect(p1,p2){
+    if (loop && p1 === p2) return;
+    if (loop && p2 === p1 + 1) return;
+    selStart = p1;
+    selEnd = p2;
+    var p;
+    var more = true;//find chord and last ids
+    playStart = null;
+    //always find one match for play pos, then look for more in range for loop
+    clearCtSel();//clear classes
+    for (var i = 0;i < songLength;i++){//find first match
+      if (playThings[i][4] && p1 - 1 < playThings[i][4]) {
+        p = playThings[i][3].slice(1);//get cT[i] from id
+        if (cT[p]) cT[p][Typ] += " s";//highlight with s class
+        playStart = i;        
+        while (more) {
+          if (playThings[i + 1] && playThings[i + 1][4] === playThings[i][4]) {
+            p = playThings[i + 1][3].slice(1);//chord
+            if (cT[p]) cT[p][Typ] += " s";            
+            i++;
+          }
+          else more = false;
+        }
+        break;
+      }      
+    }
+    if (p2 > p1) {
+      for (i = playStart;i < songLength;i++){
+        if (playThings[i] && playThings[i][4] && p2 > playThings[i][4]) {         
+          p = playThings[i][3].slice(1);
+          if (cT[p]) cT[p][Typ] += " s";
+          playEnd = i + 1;
+        }
+      }
+    }
+    else playEnd = songLength;
+    if (playStart === null) playStart = 0;    
+    nP = playStart;
+    prepCt();//update html    
+    playCursor(selStart,selEnd);
+    newScroll(selStart);
+    checkTempo(selStart);
+    if (!paused && !loop) {
+      pauseTime = playThings[nP][1];//jump to new note and continue play
+      startTime = nextNoteTime;
+    }
+ //console.log("nsel","selStart",selStart,"selEnd",selEnd,"nP",nP,"playStart",playStart,"playEnd",playEnd,"songLength",songLength)
+  }; //noteselect 
+  
+  function playCursor(s,e) {//show cursor in barnums and add red/blue for bad sums
+    selStart = s;//keep global current
+    selEnd = e;
+    var barText = barNumb.textContent;//get text to strip spans
+    barText = barText.replace(/[\*]/g," ").split("");
+    for (var i = 0; i < barText.length; i++) {
+      if (i >= s && i < e && /[^\d]/.test(barText[i])) {
+        barText[i] = "*";
+      }
+      if (s === e && /[^\d]/.test(barText[s])) barText[s] = "";
+      if (s === e && /[\d]/.test(barText[s])) {//avoid digit overwrite
+        var m = 1, n = true;
+        while (m < 4 && n) {
+          if (/[\d]/.test(barText[s + m])) m++;
+          else {
+            barText[s + m] = "";
+            n = false;
+          }
+        }
+        m = 1, n = true;
+        while (m < 4 && n) {
+          if (/[\d]/.test(barText[s - m])) m--;
+          else {
+            barText[s - m] = "";
+            n = false;
+          }
+        }
+      }
+    }
+    var barJ = barText.join("");//.padEnd(lyricText.length," ");
+    var bars = "";
+    m = -1;
+    var mHot = false;//measure too long
+    var mCool = false;//measure short
+    var mBegin = false;//measure begins
+    for (i = 0; i < lyricText.length; i++) {//for each char
+      mBegin = false;
+      if (lyricText[i] === "|" && lyricText[i + 1] !== "|") {
+        mBegin = true;
+        if (mHot || mCool) {//end highlight
+          bars +=  "</span>";
+        }
+        m++;//next measure
+      }
+      else if (i === 0 && lyricText[i] !== "|") {
+        mBegin = true;
+        m++;//first measure begins without |       
+      }
+      if (mBegin && rolledSums[m] !== undefined) {
+        mHot = rolledSums[m].toPrecision(5) > timesigBeats[m] ? true : false;
+        mCool = rolledSums[m].toPrecision(5) < timesigBeats[m] ? true : false;
+        if (mHot) bars += "<span class ='redbar'>";
+        if (mCool) bars += "<span class ='bluebar'>";
+      }     
+      bars += barJ[i];//always          
+    }    
+    if (mHot || mCool) bars += "</span>" + barJ.slice(i);
+    else bars += barJ.slice(i);
+    barNumb.innerHTML = bars;// + extendTail;
+  };//playcursor hot cold
+  
+  function newScroll(c) { //keep cursor on screen
+    var cpix = c * charWidth;
+    var sl = lyricArea.scrollLeft;
+    var cw = tabArea.clientWidth;
+    var cwm = 0.5 * cw;
+    var okl = 0.1 * cw;
+    var okr = 0.9 * cw;
+    var okrl = 0.66 *cw;
+    if (paused && ((cpix < sl + okl) || (cpix > sl + okr))) 
+      lyricArea.scrollLeft = cpix - cwm; //center after noteselct
+    if (!paused && ((cpix < sl + okl) || (cpix > sl + okrl))) 
+      lyricArea.scrollLeft = cpix - okrl; //scroll at 2/3 cw during play
+  }
+
+  function playPrep() {//collect notes and times for playback
+    var playNotes = [], playDurations = [], playWaits = [], playTimes = [],  playRings = [],ctNoteIds = [], m = -1;    
+    var i, k = -1, n, s, first = false, quarter = false, rest = false, triplet = 0, tied = false, dots = 0, ddots = 0, stringSum, chordSum = 0, newNotes = 0, strNotes, strPos, down = false, mbeats = 4, measureNotes = [], noteMeasureNums = [];
+    var defaultWait = 1;
+    var addDuration = 0;
+    var chordBegin = true;//first chord duration sets default
+    var fretsDebug = [], stringsDebug = [];
+    /* k increments the notes to play */
+    defaultTempo = true;//unless newtempo
+    timesigBeats = [];
+    measureNotes = [];//count notes for metronome measure avg
+    measureFirsts = [];
+    tempos = [];
+    tempos[0] = [0, document.getElementById("tempo").value];
+    for (i = 0; i < Object.keys(cT).length; i++) {//each cT item
+      if (cT[i][Typ].slice(0,1) === 'b' &&
+          cT[i + 1] && cT[i + 1][Typ].slice(0,1) !== "b" ) {
+        if (m > -1) timesigBeats[m] = mbeats;//start with default 4
+        m++;
+        measureNotes[m] = 0;
+        measureFirsts[m] = "";
+      }//new measure
+      if (!cT[i][Chr]) {
+        chordBegin = true;
+        cT[i][Meas] = m;//measures for all cT
+        continue;
+      }//gap or bar      
+      first = false;
+      cT[i][Meas] = m;//measures for all cT[][3] 
+      var j = k;//new same string notes found if k > j
+      stringSum = 0; //accumulate durations on same string
+      newNotes = 0; //count for sum
+      if (cT[i][Chr].slice(0,1) in restDurations) {//rest between fret notes
+        k++;
+        measureNotes[m]++;
+        ctNotePos[k] = cT[i][Pos];
+        ctNoteIds[k] = i;//rest gets id
+        noteMeasureNums[k] = m;
+        if (!measureFirsts[m]) measureFirsts[m] = cT[i][Pos];
+        playNotes[k] = 0; //silent pitch
+        fretsDebug[k] = "R";
+        stringsDebug[k] = "";
+        playDurations[k] = restDurations[cT[i][Chr].slice(0,1)];
+        playRings[k] = 0;//rests don't ring
+        playWaits[k] = playDurations[k];//always for rests
+        continue;//nothing more to play on string after orphan rest
+      }
+      if (cT[i][Typ] === "o") {
+        var o = cT[i][Chr].split('');
+        while (o.length > 0){
+          s = o.shift();
+          if (s in timeSigBeats) mbeats = timeSigBeats[s];
+          if (s in noteUpDurations) defaultWait = noteUpDurations[s];
+          if (s in noteDnDurations) addDuration = noteDnDurations[s];
+          if (s === "\ue866") newTempo(o,cT[i][Pos]);
+        }
+      }//orphan      
+      if (!(/\d/.test(cT[i][Chr]))) {
+        chordBegin = true;//cancel first default duration
+        continue;
+      } //no notes to play here
+      var dd = cT[i][Chr].split('');
+      n = [];
+      while (dd.length > 0) { //merge any two digit notes
+        if (/^\d\d/.test(dd.join(''))) {
+          dd[1] = 10 * parseInt(dd[0]) + parseInt(dd[1]);
+          dd.shift();
+        }
+        n.push(dd.shift());
+      }
+      strNotes = -1;//string char count
+      strPos = [];//positions
+      down = false; //accumulate sequential downstem durations if true
+      while (n.length > 0) { //get all notes from note sequence on one string
+        //TODO BLOCK ANY INVALID NOTE SYMBOLS HERE OR IN CONVERT TAB?**********
+        s = n.shift();// next char on this string
+        strNotes++;
+        if (s in restDurations) {//include rests in chr after digit
+          dots = (s in dottedRestDurations) ? 1 : 0;
+          rest = playNotes[k]; //keep previous note pitch          
+          k++;
+          measureNotes[m]++;
+          ctNotePos[k] = cT[i][Pos];
+          if (!measureFirsts[m]) measureFirsts[m] = cT[i][Pos];
+          strPos[strNotes] = strNotes;
+          newNotes++;          
+          playNotes[k] = 0; //silent
+          fretsDebug[k] = "R";
+          stringsDebug[k] = "";
+          playWaits[k] = triplet ? 2/3 * restDurations[s] : restDurations[s];
+          if (triplet) triplet--;
+          playDurations[k] = playWaits[k]; //always for rests
+          playRings[k] = 0;//rests don't ring
+          down = false;
+        }        
+        if (/\d/.test(s)) {
+          first = true;//next note symbol would be duration, not a new note
+          rest = false;//new pitch
+          k++; //first note is k=0
+          measureNotes[m]++;
+          ctNotePos[k] = cT[i][Pos];
+          if (!measureFirsts[m]) measureFirsts[m] = cT[i][Pos];
+          strPos[strNotes] = strNotes;
+          newNotes++;          
+          var sp = stringPitch[cT[i][Typ].slice(0,2)];
+          var pso = strClass[tabStrings - 1].slice(1,2);//top string class number
+          var ps = pitchShift[cT[i][Typ].slice(1,2) - pso + 1];
+          var fret = parseFloat(s) + ps;
+          if (sp && sp.length === 2) {
+            var pp = [];
+            pp[0] = fret + sp[0] + capoShift;
+            pp[1] = fret + sp[1] + capoShift;
+          }
+          else pp = fret + sp + capoShift;
+          playNotes[k] = pp;
+          fretsDebug[k] = fret;
+          stringsDebug[k] = cT[i][Typ].slice(0,2);
+          playWaits[k] = defaultWait;//noteUpDurations[defaultWait];//start with default
+          playDurations[k] = playWaits[k]; //default duration is wait
+          playRings[k] = addDuration;
+          down = false;
+        }
+        if (quarter) { //modify quarter note duration by any beam symbol
+          quarter = false;
+          if (s in beamDurations){
+            dots = (s in dottedUpNotes || s in dotDurations) ? 1 : 0;
+            playWaits[k] = triplet ? 2/3 * beamDurations[s] : beamDurations[s];
+            playDurations[k] = playWaits[k];//until/unless downstem?*****OK??
+          }
+          down = false;
+        }
+        if (s in noteUpDurations) {
+          dots = (s in dottedUpNotes) ? 1 : 0; 
+          if (first) {
+            first = false;
+            playDurations[k] =
+              triplet ? 2/3 * noteUpDurations[s] : noteUpDurations[s];
+            playWaits[k] = playDurations[k];//if first
+            if (triplet) triplet--;
+          }
+          else if (tied) {
+            tied = false;
+            playDurations[k] += noteUpDurations[s];
+            playWaits[k] = playDurations[k];
+          }
+          else {
+            k++; //new note
+            measureNotes[m]++;
+            ctNotePos[k] = cT[i][Pos];
+            if (!measureFirsts[m]) measureFirsts[m] = cT[i][Pos];
+            strPos[strNotes] = strNotes;
+            newNotes++;
+            if (rest) {
+              playNotes[k] = rest; //return to prior pitch
+              fretsDebug[k] = "R";
+              stringsDebug[k] = "";
+              rest = false;
+            }
+            else {
+              playNotes[k] = playNotes[k - 1];
+              fretsDebug[k] = fretsDebug[k - 1];
+              stringsDebug[k] = stringsDebug[k - 1];
+            }
+            playDurations[k] =
+              triplet ? 2/3 * noteUpDurations[s] : noteUpDurations[s];
+            playWaits[k] = playDurations[k];//new note default
+            if (triplet) triplet--;
+            playRings[k] = addDuration;
+          }
+          (s === "\uE1d5") ? quarter = true : quarter = false;
+          down = false;
+        }
+        if (s in noteDnDurations) {//use FOR duration, override upstem or default
+          ddots = (s in dottedDnNotes) ? 1 : 0;
+          if (first){
+            first = false;
+            playWaits[k] = defaultWait;//noteUpDurations[defaultWait]; //use default if first
+            playDurations[k] = noteDnDurations[s];//dD notation
+          }
+          else {
+            if (down) playDurations[k] += noteDnDurations[s];//auto tie downs
+            else playDurations[k] = noteDnDurations[s];//replace duration
+          }
+          down = true;//previous was down, cancel by any other type          
+             //not first, accumulate??****************
+          if (tied) tied = false;//Dn notes are auto tied          
+        }
+        if (s in fermatas) {
+            playWaits[k] = playWaits[k] * fermatas[s];
+            playDurations[k] = playWaits[k];//until/unless downstem replaces dur
+            down = false;
+        }
+        if (s === "\uE561") playRings[k] = 0;//cancel default ring for this note
+        if (s === "\xB3") triplet = 3;
+        if (s === "\uE1fd" || s === "\uE4BA") tied = true;
+        if (s in dotDurations) {//except "\uEcb7":1.5, for ring dots
+          if (dots === 0) {
+            dots = 1;
+            var base = playWaits[k];            
+          }
+          else if (dots === 1) { //already dotted
+            dots = 2;
+            base = 2/3 * playWaits[k];
+          }
+          dots *= 2;
+          if (dots === 2) playWaits[k] = base + base/dots;
+          if (dots === 4) playWaits[k] = playWaits[k]  + base/dots;
+          if (dots === 8) playWaits[k] = playWaits[k]  + base/dots;
+          if (dots === 16) playWaits[k] = playWaits[k]  + base/dots;
+          playDurations[k] = playWaits[k];//until/unless downstem replaces dur
+          down = false;
+        }
+        if (s === "\uEcb7") {//high dot for downstems
+          if (ddots === 0) {
+            ddots = 1;
+            var dbase = playDurations[k];            
+          }
+          else if (ddots === 1) { //already dotted
+            ddots = 2;
+            dbase = 2/3 * playDurations[k];
+          }
+          ddots *= 2;
+          if (ddots === 2) playDurations[k] = dbase + dbase/ddots;
+          if (ddots === 4) playDurations[k] = playDurations[k]  + dbase/ddots;
+          if (ddots === 8) playDurations[k] = playDurations[k]  + dbase/ddots;
+          if (ddots === 16) playDurations[k] = playDurations[k]  + dbase/ddots;
+        } 
+/* TODO: tuplet triplet * 2/3 any ratio 
+   stacatto 0.5 plus rest  */
+      } //next char from n
+      if (j !== k) {//at least one note found
+        ctNoteIds[k] = i;//use cT[i] for CSS ID
+        noteMeasureNums[k] = m;
+        j = k;
+      }      
+     // console.log("k",k,"strnotes",strNotes, ctNotePos)
+      var posShift, fixed = 0;
+      for (var bu = 0; bu <= strNotes; bu++) {//back up to fix positions on same string
+        posShift = strPos[bu];
+        //console.log("pos",posShift,k - fixed)
+        if (posShift !== undefined) {
+          ctNotePos[k - fixed] = ctNotePos[k - fixed] - posShift;
+          ctNoteIds[k - fixed] = ctNoteIds[k];
+          noteMeasureNums[k - fixed] = noteMeasureNums[k];
+          fixed++;
+        }
+      }
+      if(cT[i][Typ].slice(3,4) === "c") { //no wait until end of chord
+        if (first && !chordBegin) {//all unspecified chord notes get lower string duration
+          playDurations[k] = playDurations[k - 1];//default chord dur
+          playWaits[k] = playWaits[k - 1];//*********
+          playRings[k] = playRings[k - 1];
+        }
+        chordBegin = false;
+        for(var x = 0;x < newNotes;x++) {
+          stringSum += playWaits[k - x];
+        }        
+        if (!cT[i + 1] || /\d/.test(cT[i + 1][Chr].slice(0,1))) {//next is on new string
+          // cancel wait on this string         
+          playWaits[k] -= stringSum;
+          chordSum = (stringSum > chordSum) ? stringSum : chordSum;
+        } 
+        else { //end, skip ahead if backed up
+          chordSum = (stringSum > chordSum) ? stringSum : chordSum;          
+          playWaits[k] += chordSum - stringSum;
+          chordSum = 0;
+        }
+      }//chord
+    } //next cT item
+    timesigBeats[m] = mbeats;//last measure
+    var id, tabPos;//, w = 1;
+    songLength = playNotes.length; //global
+    var prepNotes = [];//clean slate!
+    rolledSums = [];
+    for (i = 0; i < songLength; i++) {
+      id = ctNoteIds[i] ? "i" + ctNoteIds[i] : "";//should not happen
+      tabPos = ctNotePos[i] - 3;// subtract tune area
+      ctIdPos[id] = tabPos;
+      checkTempo(tabPos);//update secsPerBeat
+      playDurations[i] += playRings[i];//add unless cancelled
+      prepNotes[i] = [];
+      prepNotes[i].push(playNotes[i]);//0 pitch
+      prepNotes[i].push("");//1 placeholder  for time from accumlated waits
+      prepNotes[i].push(playDurations[i] * secsPerBeat);//2 duration
+      prepNotes[i].push(id);//3 ID for highlight play pos
+      prepNotes[i].push(tabPos);//4 tab position
+      prepNotes[i].push(playWaits[i]);//5 waits for unroll
+      prepNotes[i].push(noteMeasureNums[i]);//6 measure num for metronome calcs
+      playTimes[i] = playWaits[i];//for debug
+      if (!rolledSums[noteMeasureNums[i]]) rolledSums[noteMeasureNums[i]] = 0;
+      rolledSums[noteMeasureNums[i]] += playWaits[i];
+    };//playprep
+    playThings = [];
+    playThings = unRoll(prepNotes);    
+      //use actual sums, not number from time sig
+      var avg = measureTimes[0] / measureSums[0];//use average quarter note timing
+      var wait = 0;
+      var metroNotes = [];
+      m = 0;//count measures here
+      var one = true;//first beat
+      var b = 0;//beats clicked
+      for (i = 0; i < songBeats; i++) {
+        metroNotes[i] = [];
+        if (metronome) {
+          if (one) metroNotes[i].push(102);
+          else metroNotes[i].push(101);
+        }
+        else metroNotes[i].push(0);//silent
+        metroNotes[i].push(wait);//playTimes[i]);
+        metroNotes[i].push(avg);//duration
+        metroNotes[i].push("");
+        metroNotes[i].push("");
+        playThings[songLength + i] = metroNotes[i];
+        b++;
+        one = false;
+        wait += avg;
+        if (b >= measureSums[m]) {//actual not correct beats
+          b = 0;
+          one = true;
+          m++;
+          avg = measureTimes[m] / measureSums[m];
+        }
+      }
+      songLength += metroNotes.length;
+    playEnd = songLength;//until changed by noteSelect
+
+    playThings.sort(byTimes);//sorted [][pitch, time, duration]
+
+    function byTimes(a, b) {
+        if (a[1] === b[1]) return 0;
+        else return (a[1] < b[1]) ? -1 : 1;
+    }
+
+    //********************temp
+
+    if (playTimesDebug) {
+      var playDebug = [];
+      for (i = 0; i < songLength; i++) {
+        playDebug[i] = [];
+        playDebug[i].push(fretsDebug[i]);
+        playDebug[i].push(stringsDebug[i]);
+        playDebug[i].push(playTimes[i]);
+        playDebug[i].push(playDurations[i]);//duration secs
+        //playDebug[i].push(playDurations[i]);
+      }
+      playDebug.unshift(["fret","string","beats","duration"]);
+/*      playNotesDebug.value = playNotes.join(" ");
+      playDurationsDebug.value = playDurations.join(" ");
+      playWaitsDebug.value = playWaits.join(" ");*/
+      playTimesDebug.value = "[" + playDebug.join("][") + "]";
+    }
+  }//playPrep
+  
+  function unRoll(rolledNotes) {
+    //playThings [0 pitch, 1 time, 2 duration, 3 id, 4 tab pos, 5 waits, 6 measure]
+    var repeats = measureRepeats().concat(pairRepeats());//***********handle nested begining repeat
+    var textualRepeats = jumpRepeats();
+    var p = 0;
+    var i,j,k;
+    var unRolled = [];
+    console.log(textualRepeats)
+
+    for (i = 0; i < rolledNotes.length;i++) {    
+      if (repeats[p] && rolledNotes[i][4] > repeats[p][0]) {
+        k = i;
+        while (repeats[p] && rolledNotes[i][4] > repeats[p][0]) {
+        j = 0;
+          while (rolledNotes[j + k] && 
+                 (rolledNotes[k][4] > repeats[p][0] && rolledNotes[j + k][4] < repeats[p][1])) {
+            unRolled.push(rolledNotes[j + k].slice());
+            j++;
+          }
+        p++;
+        }
+      }
+      unRolled.push(rolledNotes[i].slice());     
+    }
+    var time = 0;
+    songBeats = 0;//length for metronome
+    measureSums = [];
+    measureTimes = [];
+    for (i = 0; i < unRolled.length; i++) {
+      checkTempo(unRolled[i][4]);//update secsPerBeat
+      unRolled[i][1] = time;
+      time += unRolled[i][5] * secsPerBeat;//units is seconds NOT quarter notes
+      songBeats += unRolled[i][5];
+      if (!(measureSums[unRolled[i][6]])) measureSums[unRolled[i][6]] = 0; 
+      measureSums[unRolled[i][6]] += unRolled[i][5];
+      if (!measureTimes[unRolled[i][6]]) measureTimes[unRolled[i][6]] = 0;
+      measureTimes[unRolled[i][6]] += unRolled[i][5] * secsPerBeat;
+    }  
+    songLength = unRolled.length;
+    return unRolled;
+  }; //unroll
+  
+  function jumpRepeats() {
+    var daCapo, daSegno, DCalCoda, DCalFine, DSalCoda, DSalFine, segno = 0, toCoda, fine = songLength, coda = songLength;
+    var unused = [];
+    var notUsed = true, first = true;//use first found of DC or DS
+    var jump = [], jump2 = [];//repeat section[from, to]
+    
+    cT.forEach((c,i) => {//find positions of jump sections
+      var t = cT[i][Chr];
+      if (/[\uE045-\uE04B\u00D5-\u00D8]/.test(t)) {//any jump char
+        notUsed = true;
+        if (/\uE046/.test(t) && first) {//DC
+          notUsed = false;
+          first = false;
+          if (/\u00D7/.test(t) && !DCalCoda) DCalCoda = i;//alCoda
+          else if (/\u00D8/.test(t) && !DCalFine) DCalFine = i;//alFine
+          else daCapo = i;}
+        if (/\uE045/.test(t) && segno != 0 && first) {//DS must follow segno
+          notUsed = false;
+          first = false;
+          if (/\u00D7/.test(t)) DSalCoda = i;
+          else if (/\u00D8/.test(t)) DSalFine = i;
+          else daSegno = i}
+        if (/[\uE047\uE04A\eE04B]/.test(t) && segno === 0) {segno = i; notUsed = false;}
+        if (/[\uE048\uE049]/.test(t) && coda === songLength) {coda = i; notUsed = false;}
+        if (/\u00D5/.test(t) && fine === songLength) {fine = i; notUsed = false;}
+        if (/\u00D6/.test(t) && !toCoda) {toCoda = i; notUsed = false;}
+        if (notUsed) unused.push(i);
+      }
+    });
+    
+    //only one of these conditions can be met
+    if (daCapo) jump = [0, songLength];
+    if (DCalFine) jump = [0, fine];//fine will stop playback      
+    if (DCalCoda && toCoda) {jump = [0, toCoda]; jump2 = [coda, songLength]}
+    if (DCalCoda && !toCoda) jump = [0, songLength];
+    if (daSegno) jump = [segno, songLength];
+    if (DSalFine) jump = [segno, fine];
+    if (DSalCoda && toCoda) {jump = [segno, toCoda]; jump2 = [coda, songLength]}
+    if (DSalCoda && !toCoda) jump = [segno, songLength];
+    
+    if (segno != 0 && !(daSegno || DSalFine || DSalCoda)) unused.push(segno);
+    
+    unused.forEach(u => {cT[u][Typ] += " u";});//flag unused 
+    
+    console.log(segno)
+    
+    return [jump, jump2,unused];
+  }
+  
+  function measureRepeats() {
+    var mReps = [];//measures with repeat sign
+    var dReps = [];//two measure repeats
+    var pReps = [];//positions to repeat
+    var mrPairs = [];//pairs for unroll
+    
+
+    cT.forEach((c,i) => {
+      if (/\uE500/.test(cT[i][Chr])) {
+        mReps.push([cT[i][Meas]]);
+      }});//any ./. 
+
+    cT.forEach((c,i) => {
+      if (/\uE501/.test(cT[i][Chr])) {
+        dReps.push([cT[i][Meas]]);
+      }});//any .//.    
+    
+    cT.forEach((m,i) => {mReps.forEach((r,j) => {
+        if (r && cT[i][Meas] === r[0] - 1) {if (!pReps[j]) pReps[j] = []; pReps[j].push(cT[i][Pos])}});});//tab pos
+
+    cT.forEach((m,i) => {dReps.forEach((r,j) => {
+        if (r && (cT[i][Meas] === r[0] - 2 || cT[i][Meas] === r[0] - 1)) {if (!pReps[j]) pReps[j] = []; pReps[j].push(cT[i][Pos])}});});//tab pos    
+    
+    pReps.forEach((p,i) => {mrPairs[i] = []; mrPairs[i][0] = p[0] - 3; mrPairs[i][1] = p[p.length - 1] - 2});
+    
+    //console.log(pReps,mrPairs)
+    return mrPairs;
+  }
+  
+  function pairRepeats() {
+    var repeatBars = []; repeatBars[0] = 0;//default |: at beginning
+    var pairs = [], goodPairs = [], pairPositions = [], repCount;
+    
+    cT.forEach((c,i) => {
+      if (/[\uE040-\uE042]/.test(cT[i][Chr])) {repeatBars.push(i);}});//any |: :| or :|:
+    
+    repeatBars.forEach((b,i) => {pairs.push([b, repeatBars[i + 1]]);});//collect every possible pair
+    
+    if (pairs[0] && pairs[0][1] && pairs[0][0] === 0 &&
+      /[\uE041\uE042]/.test(cT[pairs[0][1]][Chr])) goodPairs.push(pairs[0]);//use default begin for first pair  
+    
+    pairs.forEach(p => {if (p[0] && p[1]) {//find valid pairs
+      if (/[\uE040]/.test(cT[p[0]][Chr]) && /[\uE041\uE042]/.test(cT[p[1]][Chr])) goodPairs.push(p);// |:...:| or |:...:|:                          
+      if (/[\uE042]/.test(cT[p[0]][Chr]) && /[\uE041]/.test(cT[p[1]][Chr])) goodPairs.push(p);// :|:...:|
+    }});
+    
+    repeatBars.forEach(b => {//flag unused in cT html class
+      if (!(goodPairs.join()).includes(b) && cT[b] && b > tabStrings) {cT[b][Typ] += " u";}});
+    
+    goodPairs.forEach(p => {
+      var gp = [cT[p[0]][Pos] - 3,cT[p[1]][Pos] - 3];
+      var bkwds = cT[p[1]][Chr];//backwards repeat bar, may include play count superscript
+      pairPositions.push(gp);
+      if (superRegex.test(bkwds.slice(1,2))) {
+        repCount = superscripts[bkwds.slice(1,2)];
+        if (repCount > 2) {do {pairPositions.push(gp);repCount--;} while (repCount > 2);}
+      }
+      else if (superRegex.test(bkwds.slice(0,1))) {//take either leading or following superscript
+        repCount = superscripts[bkwds.slice(0,1)];
+        if (repCount > 2) {do {pairPositions.push(gp);repCount--;} while (repCount > 2);}
+      }
+    });
+    //console.log(pairPositions)
+    return pairPositions;    
+  }  
+  
+  function newTempo(t,p) {
+    var tempo, d = "",s;
+    while (t.length > 0) {
+      s = t.shift();
+      if (s in subscripts) d += subscripts[s];
+    }
+    tempo = parseInt(d);
+    if ((19 < tempo) && (tempo < 501)) {
+      tempos.push([p - 3, tempo]);//reduce p for tempo string length
+      defaultTempo = false;
+    }
+  }
+  
+  function checkTempo(p) {
+    var tempo = tempos[0][1];    
+    if (defaultTempo) {
+      var newTempo = document.getElementById("tempo").value;
+      if (newTempo != tempo) {
+        tempos[0][1] = newTempo;
+        secsPerBeat = 60 / newTempo;
+        playPrep();
+        return;
+      }
+      return;
+    }
+    for (var i = 1; i < tempos.length; i++) {
+      if (tempos[i][0] > p) break;      
+      if (tempos[i][0] <= p) tempo = tempos[i][1];       
+    }
+    if (tempo) document.getElementById("tempo").value = tempo;
+    secsPerBeat = 60 / tempo;
+    return;
+  }//update tempo to new position
+  
+  function keyDown2(event) {
+    key2 = true;
+    var cw = tabArea2.selectionStart;
+    tabArea.focus();
+    tabArea.setSelectionRange(cw,cw);
+    keyDownHandler(event);    
+  }
+  
+  const prepThrottle = throttle(prepCt, 300);
+
+  function throttle(func, wait = 100) {
+    let timer = null;
+    return function(...args) {
+      if (timer === null) {
+        timer = setTimeout(() => {
+          func.apply(this, args);
+          timer = null;
+        }, wait); 
+      }
+    };
+  }
+  
+  var mouseDown = false;
+  var mouseDown1 = false;  
+  var mouseDown2 = false;
+  
+  function tabInit(add) {
+    if (add) { //no measure bar at 0 on paste
+      tabArea.value = "\n".repeat(tabStrings - 1);
+      tabArea.value += extendTail;
+      tabArea2.value = tabArea.value;
+      lyricArea.value = extendTail;      
+    }
+    else {
+      tabArea.value = "|\n".repeat(tabStrings - 1);
+      tabArea.value += "|" + extendTail;
+      tabArea2.value = tabArea.value;
+      lyricArea.value = "|" + extendTail;
+    }
+  }
+  
+  function tabMouseDown() {
+    if (!tabArea.value) tabInit();    
+    mouseDown = true;
+    mouseDown1 = true;
+    tabArea.setSelectionRange(0,0);//clear previous to prevent drag
+  }
+  
+  function tab2MouseDown() {
+    if (!tabArea.value) tabInit();    
+    mouseDown = true;
+    mouseDown2 = true;
+    tabArea2.setSelectionRange(0,0);//clear previous to prevent drag    
+  }
+  
+  function ctMouseUp() {
+    if (document.activeElement.id === "instr") return;
+    var s = window.getSelection();
+    var a, b, c, d;
+    if (s.anchorNode && s.anchorNode.parentElement) a = s.anchorNode.parentElement.id;
+    if (s.focusNode && s.focusNode.parentElement) b = s.focusNode.parentElement.id;
+    if (a) c = ctIdPos[a];
+    if (b) d = ctIdPos[b];
+    if (c && d) {
+      if (c === d )noteSelect(c,d);
+      else noteSelect(c, d + 1);
+    }
+    window.getSelection().collapse(null); //clear previous to prevent drag 
+  } 
+  
+  function barNumbScroll() {
+    lyricArea.scrollLeft = barNumb.scrollLeft;
+  }
+  
+  function linkScroll() {
+    if (keyScroll) { //keystroke scroll event, not scrollbar move
+      keyScroll = false;      
+    }
+    else {//center cursor to prevent unscroll Firefox 
+      cursorLyric = (lyricArea.scrollLeft + lyricArea.clientWidth / 2) / charWidth;
+      lyricArea.setSelectionRange(cursorLyric, cursorLyric);
+    }    
+    barsHidden = barScroll();
+    partsHidden = partScroll();   
+    if (mouseDown && document.activeElement.id === "TabIn") 
+      lyricArea.scrollLeft = tabArea.scrollLeft;//tab area mouse drag select
+    if (mouseDown && document.activeElement.id === "TabIn2") 
+      lyricArea.scrollLeft = tabArea2.scrollLeft;//tab area mouse drag select
+/*    if (mouseDown && document.activeElement.id === "BarNum") 
+      lyricArea.scrollLeft = barNumb.scrollLeft;//tab area mouse drag select*/
+    
+    tabArea.scrollLeft = lyricArea.scrollLeft;
+    tabArea2.scrollLeft = lyricArea.scrollLeft;    
+    barNumb.scrollLeft = lyricArea.scrollLeft;
+    if (paused) prepThrottle();//don't update cT during play
+  }   
+  
+  function scrollHorizontally(event) {
+      lyricArea.scrollLeft -= (event.wheelDeltaY / 4);
+      event.preventDefault();
+  }
+
+  function noModal() {
+    document.getElementById("msgdiv").style.display = "none";
+    event.preventDefault();
+  }
+
+  function readJS(evt) {
+    var f = evt.target.files[0];
+    var r = new FileReader();
+    r.onload = function(e) { 
+        var contents = e.target.result; 
+      document.getElementById('scriptSrc').value = contents;
+    }
+    r.readAsText(f);
+  } 
+  
+  function readJS2(evt) {
+    var f = evt.target.files[0];
+    var r = new FileReader();
+    r.onload = function(e) { 
+        var contents = e.target.result; 
+      document.getElementById('scriptSrc2').value = contents;
+    }
+    r.readAsText(f);
+  }  
+  
+  function keyDownHandler(e) {
+    keysDown++;
+    keyHandled = true;
+    locateTabCursor();
+    oldPlace = cursorPlace;
+    setSelStart = cursorWhere;
+    tabArea.setSelectionRange(setSelStart, setSelStart); //only one char selection
+    if (e.key === "Enter") {
+      event.preventDefault();
+      addBar(tabArea);
+      keyIdentified = true;
+      return;
+    }
+    if (e.key === "Backspace") {
+      event.preventDefault();
+      bkspCol(tabArea);
+      keyIdentified = true;
+      return;
+    }
+    if (e.key !== "Unidentified") {
+      keyIdentified = true; //********** test if false
+      tabKeyDown(e); //comment for test
+    }
+    if (!keyIdentified){
+      if (tabArea.value[cursorWhere] === "\n") extendTab(0);// don't overtype line end
+      if (tabArea.value.length === cursorWhere) extendTab(0); // last line end
+      oldValue = tabArea.value;
+    }
+  }
+  
+  function inputHandler(e) {
+    if (!e || e.data === null) return;
+    var newChar = e.data.slice(0,1); //newValue[setSelStart]
+    if (!keyHandled) {//no key down ffox android
+      if (tabArea.value[cursorWhere] === "\n") extendTab(0);// don't overtype line end
+      if (tabArea.value.length === cursorWhere) extendTab(0); // last line end
+      oldValue = lines.join("\n");       
+    }
+    if (keyIdentified) return;
+    unIdKey(newChar, oldValue);
+  }
+  
+  function keyUpHandler(e) {
+    if (oType) {//nothing to do for overtype keys
+      e.stopPropagation();
+      oType = false;
+      return;
+    }
+    if (e.key === "Shift") {
+      locateTabCursor();
+      setSelStart = cursorWhere + 1;
+      setSelEnd = setSelStart;
+      tabArea.setSelectionRange(setSelStart, setSelEnd);
+      return;}
+    keysDown > 0 ? keysDown-- : keysDown = 0;
+
+    if (!keyIdentified) {
+      setSelStart += 1;
+      setSelEnd = setSelStart;
+      tabArea.setSelectionRange(setSelStart, setSelEnd);        
+    }
+    if (!(undoKey || navKey || e.key === "Shift" ||
+          e.key === "Control" || e.key === "Alt" || e.key === "Escape")) getTabIn();    
+    else keepScrollPlace();
+    navKey = false;
+    keyIdentified = false;
+    keyHandled = false;     
+    undoKey = false;
+    key2 = false;
+    noteSelect(selStart,selEnd);
+  }
+  
+  function unIdKey(newChar, oldValue) {
+    var curOld = setSelStart;    
+  switch (newChar) {
+    case ",":
+      commaLeft();
+      setSelStart -= 2;      
+      tabArea.value = oldValue;      
+      break;
+    case ".":
+      dnArrow();
+      setSelStart -= 2;
+      tabArea.value = oldValue;
+      break;
+    case " ":
+      tabArea.value = oldValue;
+      tabArea.setSelectionRange(curOld, curOld);
+      insCol();
+      setSelStart = curOld - 1 + cursorLine;
+      setSelEnd = setSelStart;
+      break;
+    default:
+      unIdOvertype(newChar); 
+    }
+  }
+  
+  function unIdOvertype(newChar) {
+    var curOld = setSelStart;    
+    var newValue = tabArea.value;
+    var barMove = false;
+    // don't overtype | here
+    if (oldValue[curOld] === "|") {
+      barMove = true;
+      tabArea.value = oldValue;
+      tabArea.setSelectionRange(curOld, curOld);
+      var tabNew = "";
+      var tabLines = [];
+      for (var i = 0; i < tabStrings; i++) {
+        tabLines[i] =
+          tabSplit[i].slice(0, cursorPos) + "-" + tabSplit[i].slice(cursorPos);
+        tabNew += (i < tabStrings - 1) ? tabLines[i] + "\n" : tabLines[i] + extendTail;
+      }
+      tabArea.value = tabNew.slice(0, setSelStart + cursorLine) + newChar +
+        tabNew.slice(setSelStart + cursorLine + 1);      
+      setSelStart = curOld + cursorLine + 1;
+      setSelEnd = setSelStart;
+      cursorWhere += cursorLine;
+    }
+    if ((!barMove) && (/[3-90]/.test(oldValue[curOld - 1]) && /[\d]/.test(newChar)) ||
+      (oldValue[curOld - 1] === "2" && /[5-9]/.test(newChar))) {
+      tabLines = [];
+      tabNew = "";
+      for (i = 0; i < tabStrings; i++) {
+        tabLines[i] =
+          tabSplit[i].slice(0, cursorPos) + "-" + tabSplit[i].slice(cursorPos);
+        tabNew += (i < tabStrings - 1) ? tabLines[i] + "\n" : tabLines[i] + extendTail;
+      }
+      tabArea.value = tabNew.slice(0, setSelStart + cursorLine + 1) + newChar +
+        tabNew.slice(setSelStart + cursorLine + 2);      
+      setSelStart = curOld + cursorLine + 1;
+      setSelEnd = setSelStart;
+      cursorWhere += cursorLine;
+      barMove = true;
+    }
+    if (!barMove) tabArea.value = oldValue.slice(0, setSelStart) + newChar +
+      newValue.slice(newValue.length - oldValue.length + setSelStart + 1);          
+  }
+  
+/*  function pasteClipTab(paste) {
+    //let paste = (event.clipboardData || window.clipboardData).getData("text");
+    locateTabCursor();
+    tabArea.value = "";
+    tabArea.value = paste;
+    prevLines = lines.slice();
+    if (prevLines.length !== tabStrings) { // fallback to empty array
+      prevLines = " ".repeat(tabStrings - 1).split(" ");
+      lines = prevLines.slice();
+    }
+    newLines = tabArea.value.replace(/(\r\n|\n|\r)/gm, "\n").split("\n");
+    if (lines[0].length <  1) { //empty
+      append = false;
+      undoing = false;
+      findTab();
+    } else {
+      for (var i = 0; i < tabStrings; i++) { //separate sections
+        prevHead[i] = prevLines[i].slice(0, cursorPos);
+        prevTail[i] = prevLines[i].slice(cursorPos);
+      }
+      append = true;
+      undoing = false;
+      findTab();
+    }
+  }*/
+  
+/*  async function getClipboardContents() {
+    console.log("try")
+  try {
+    const text = await navigator.clipboard.readText();
+    console.log('Pasted content: ', text);
+  } catch (err) {
+    console.error('Failed to read clipboard contents: ', err);
+  }
+    console.log("return")
+}*/
+/*  async function getClipboardPermission() {
+  const queryOpts = { name: 'clipboard-read', allowWithoutGesture: false };
+const permissionStatus = await navigator.permissions.query(queryOpts);
+// Will be 'granted', 'denied' or 'prompt':
+console.log(permissionStatus.state);
+
+// Listen for changes to the permission state
+permissionStatus.onchange = () => {
+  console.log(permissionStatus.state);
+};
+  }*/
+
+
+  
+  function tabKeyDown(event) {
+  if (event.defaultPrevented) {
+    return; // Do nothing if the event was already processed
+  }
+  event.preventDefault();
+    //console.log(["key",event.key,event.ctrlKey])
+  switch (event.key) {
+    case "Control":    
+      return;
+    case "Down": // IE/Edge specific value
+    case "ArrowDown":
+      dnArrow();
+      break;
+    case "Up": // IE/Edge specific value
+    case "ArrowUp":
+      upArrow();
+      break;
+    case "Left": // IE/Edge specific value
+    case "ArrowLeft":
+      leftArrow();
+      break;
+    case "Right": // IE/Edge specific value
+    case "ArrowRight":
+      rightArrow();
+      break;
+    case "Enter":
+      addBar();
+      break;
+    case "Alt":      
+      navKey = true;
+      locateTabCursor();
+      cursorLyric = cursorPos;
+      tabArea.blur();
+      lyricArea.focus();        
+      break;
+    case "Esc": // IE/Edge specific value
+    case "Escape":     
+      document.getElementById("barMode").value = "Off"; 
+      barMaster();
+      break;
+    case "Shift":
+      break;      
+    case "Tab":     
+      document.getElementById("barMode").value = "Tab"; 
+      barMaster();       
+      break;      
+    case ".":
+    case "Decimal":
+      dotDown();
+      break;
+    case ",":
+      commaLeft();
+      break;
+    case "Delete":
+    case "Del":      
+      delCol();
+      break;
+    case " ":      
+    case "Insert":      
+      insCol();
+      break;
+    case "|":
+      addBar();
+      break;      
+    case "Backspace":      
+      bkspCol();
+      break;
+/*    case "PageDown":
+    case "Redo":
+      undoKey = true;      
+      redo();
+      setSelEnd = setSelStart;
+      break;
+    case "PageUp":
+    case "Undo":
+      undoKey = true;
+      undo();      
+      break;*/
+    case "End":      
+      endKey();
+      break;
+    case "Home":      
+      homeKey();
+      break;
+    case "v":
+      if (event.ctrlKey) {
+//getClipboardContents();
+       // document.execCommand('paste');
+
+       // console.log("c-v key")
+       // console.log(["ctrl-v",navigator.clipboard.readText()])
+/*       navigator.clipboard.readText().then(text => {pasteTab(text);}).catch(err => {pasteFail(err);});*/
+        navigator.clipboard.readText().then(clipText => pasteTab(clipText));
+        //console.log("c-v key post")
+        
+        //getClipboardPermission();
+        
+
+      }
+      else overType(event.key);
+      break;      
+    case "y":
+      if (event.ctrlKey) {
+        undoKey = true;
+        redo();
+      }
+      else overType(event.key);
+      break;      
+    case "z":
+      if (event.ctrlKey) {
+        undoKey = true;        
+        undo();
+      }
+      else overType(event.key);
+      break;
+    default:
+      overType(event.key);
+  }
+}   
+  
+  function extendTab(n) {
+    var j, empty = false, split;
+    split = tabArea.value.split("\n");
+    split[tabStrings - 1] = trimTail(split[tabStrings - 1]);
+    if (split.length < 3) empty = true;
+    for (j = 0; j < tabStrings; j++) split[j] = empty ? "-" : split[j] + "-";
+    tabArea.value = split.join("\n") + extendTail;
+    setSelStart = cursorWhere + n + cursorLine;
+    setSelEnd = setSelStart; 
+    tabArea.setSelectionRange(setSelStart, setSelStart);
+    getTabIn();
+  }
+  
+  function tableText(tableCell) {
+    keyIdentified = true;
+    if (lastBlur === "tab") {      
+      locateTabCursor();      
+      overType(tableCell.innerHTML);
+      //getTabIn();//again??*******
+      tabArea.focus();
+    }
+    if (lastBlur === "tab2") {
+      tabArea.setSelectionRange(cursorWhere2,cursorWhere2);
+      locateTabCursor();
+      overType(tableCell.innerHTML);     
+      getTabIn();
+      tabArea2.setSelectionRange(cursorWhere2 + 1,cursorWhere2 + 1);
+      tabArea2.focus();
+    }    
+    if (lastBlur === "lyric") {
+      locateLyricCursor();
+      lyricArea.value = lyricArea.value.slice(0, cursorLyric) + tableCell.innerHTML + lyricArea.value.slice(cursorLyric);
+      if (barFrom === "Tab") {
+        lyricBarsFromTab();
+        getTabIn();
+      } 
+      else if (barFrom === "Lyr") {
+        tabBarsFromLyrics(trimTail(lyricArea.value));
+      }
+      else if (barFrom === "Off") {
+        thisBarIns();
+      }           
+      lyricArea.setSelectionRange(cursorLyric + 1, cursorLyric + 1);
+    }
+    keepScrollPlace();
+    keyIdentified = false;
+    noteSelect(cursorPos,cursorPos);
+    oType = false;
+  }
+  
+  
+  window.onload = () => {
+    ctx.suspend();// in case the browser doesn't do this
+    playTimesDebug = document.getElementById("debugtimes");//*******temp
+    ptable = document.getElementById("pitchtbl");
+    var finp = document.getElementById('fileinput');
+    if (finp) finp.addEventListener('change', readJS, false);
+    var finp2 = document.getElementById('fileinput2');
+    if (finp2) finp2.addEventListener('change', readJS2, false); 
+    var mk = document.getElementById('make');
+    if (mk) mk.addEventListener('click', makeOffline, false);
+    tabArea = document.getElementById("TabIn");
+    tabArea.focus();
+    tabArea2 = document.getElementById("TabIn2");    
+    tuneArea = document.getElementById("TuneIn");
+    tuneArea2 = document.getElementById("TuneIn2");    
+    lyricArea = document.getElementById("LyricIn");
+    barNumb = document.getElementById("BarNum");
+    ctabOut = document.getElementById("ctOut");
+    tabBack = document.getElementById("TabBacker");
+    tuneBack = document.getElementById("TuneBacker");
+    var song = document.getElementById("songSave");
+    if (song) document.getElementById("songTitle").innerHTML = song.innerHTML;
+    else document.getElementById("songTitle").innerHTML = "title"
+    tuneArea.value = stringNames();
+    tuneArea2.value = stringNames();    
+    tabArea.value = "";
+    tabArea2.value = "";
+    newStrings("6 Guitar");
+    colorToggle();    
+    lyricArea.value = lyricText;
+    addEvents();
+    if (notEmpty()) {
+      if (song) { //saved textareas found
+        var lbtn = document.getElementById("loopbtn").className;
+        lbtn.includes("off") ? loop = true : loop = false;
+        var mbtn = document.getElementById("metro").className;
+        mbtn.includes("off") ? metronome = true : metronome = false;
+        var tab = document.getElementById("tabSave");
+        document.getElementById("TabIn").value = tab.value;
+        var lyr = document.getElementById("lyricSave");
+        var tun = document.getElementById("tuneSave");
+        document.getElementById("TuneIn").value = tun.value;
+        var str = document.getElementById("stringSave");
+        document.getElementById("numStrings").value = str.value;
+        var parts = document.getElementById("kParts").className;
+        parts.includes("off") ? keepSections = false : keepSections = true;
+        var bars = document.getElementById("kMeasures").className;
+        bars.includes("off") ? keepMeasures = false : keepMeasures = true;
+        var space = document.getElementById("kSpaces").className;
+        space.includes("off") ? keepSpaces = false : keepSpaces = true;
+        lyricLtrSpace = parseInt(document.getElementById("ltrSave").innerHTML);
+        var bpm = parseInt(document.getElementById("temposave").innerHTML);
+        document.getElementById("tempo").value = bpm;
+        var psh = document.getElementById("pitchsave").innerHTML;
+        pitchShift = psh.split(",");
+        tempos[0] = [0,document.getElementById("tempo").value];
+        secsPerBeat = 60 / document.getElementById("tempo").value;
+        instrument = str.value;
+        newStrings(instrument);
+        startTab = tun.value.split("\n");
+        tabStrings = startTab.length;
+        lyricText = lyr.value;
+        lyricBarsFromTab();
+        document.getElementById("LyricIn").value = lyr.value;
+        document.getElementById("songTitle").innerHTML = song.innerHTML;
+      }
+      showButtons = true; menuToggle();
+      barFrom = "Tab";
+      barMaster();
+      getTabIn();
+      document.getElementById("nonPrint").style.display = "none";
+      document.getElementById("menuTog").style.display = "none";
+      document.getElementById("editButton").style.display = "block";
+    }
+    secsPerBeat = 60 / document.getElementById("tempo").value;
+    tempos[0] = [0,document.getElementById("tempo").value];
+    readPitches();
+    playPrep();
+  }
+  
+  function notEmpty(){   
+    var empty = document.getElementById("lyricSave");
+    var yes = (empty && empty.value.length > 0) ? true : false;
+    return yes;
+  }
+
+  function editClick() {
+    document.getElementById("nonPrint").style.display = "block";
+    document.getElementById("menuTog").style.display = "inline-block";
+    document.getElementById("editButton").style.display = "none";
+    var inst = document.getElementById("instSave").innerHTML;    
+    if (inst) document.getElementById("instr").innerHTML = inst;
+  }
+  
+  function locateTabCursor(add) {
+    var trimLen;
+    if (!tabArea.value) tabInit(add);
+    cursorWhere = tabArea.selectionStart;
+    cursorThere = tabArea.selectionEnd;
+    tabSplit = tabArea.value.split("\n");
+    tabSplit[tabStrings - 1] = trimTail(tabSplit[tabStrings - 1]);
+    trimLen = tabSplit.join("\n").length;
+    if (cursorWhere > trimLen) {
+      cursorWhere = trimLen;
+      cursorThere = cursorWhere;
+    }
+    lineLen = tabSplit[0].length;
+    cursorPos = cursorWhere % (lineLen + 1); // characters
+    cursorPos2 = cursorThere % (lineLen + 1);
+    cursorLine = Math.floor(cursorWhere / (lineLen + 1));
+    cursorSplit = (cursorPos / lineLen) * tabArea.scrollWidth; //pixels
+    cursorPlace = cursorSplit - tabArea.scrollLeft; //pixels
+  }
+
+  function homeKey() {
+    navKey = true;
+    setSelStart = 0;
+    setSelEnd = setSelStart;
+    cursorSplit = 0;
+    if (showColors === 0) {
+      tabArea2.focus();
+      tabArea2.scrollTop = 0;
+      key2 = false;
+    } 
+    else tabArea.setSelectionRange(setSelStart, setSelEnd); 
+    noteSelect(0,0);
+  }
+
+  function endKey() {
+    navKey = true;
+    setSelStart = (tabSplit[0].length + 1) * (cursorLine + 1) - 1;
+    setSelEnd = setSelStart;
+    oldPlace = 0;
+    cursorSplit = tabArea.scrollWidth;
+    noteSelect(tabSplit[0].length,tabSplit[0].length);
+  }
+
+  function leftArrow() {    
+    navKey = true;
+    if (cursorPos === 0) return;
+    charShift = -1;
+    setSelStart = cursorWhere - 1;
+    setSelEnd = setSelStart;
+    noteSelect(cursorPos - 1, cursorPos - 1);    
+  }
+
+  function rightArrow() {
+    navKey = true;
+    if (cursorPos === lineLen) return;
+    charShift = 1;
+    setSelStart = cursorWhere + 1;
+    setSelEnd = setSelStart;
+    noteSelect(cursorPos + 1, cursorPos + 1);    
+  }
+
+  function upArrow() {
+    navKey = true;    
+    if (cursorLine === 0) cursorLine = tabStrings;
+    var lineUp = cursorPos + (tabSplit[0].length + 1) * (cursorLine - 1);
+    setSelStart = lineUp;
+    setSelEnd = setSelStart;
+    if (showColors === 0 && cursorLine >= blackStrings) {
+      key2 = false;
+      tabArea.focus();    
+      tabArea.setSelectionRange(setSelStart, setSelEnd);
+    }
+    if (showColors === 0 && cursorLine <= blackStrings) {
+      tabArea2.focus();
+      tabArea2.setSelectionRange(setSelStart, setSelEnd);      
+      tabArea2.scrollTop = 0;
+      tabArea2.scrollLeft = tabArea.scrollLeft;
+    }
+    if (document.activeElement.id === "TabIn") 
+      tabArea.setSelectionRange(setSelStart, setSelEnd);
+    noteSelect(cursorPos, cursorPos);
+  }
+
+  function dnArrow() {    
+    navKey = true;
+    cursorLine++;
+    if (cursorLine === tabStrings) cursorLine = 0;
+    setSelStart = cursorPos + (tabSplit[0].length + 1) * cursorLine;
+    setSelEnd = setSelStart;
+    if (showColors === 0 && cursorLine >= blackStrings) {
+      key2 = false;
+      tabArea.focus();    
+      tabArea.setSelectionRange(setSelStart, setSelEnd);
+    }
+    if (showColors === 0 && cursorLine === 0) {
+      tabArea2.focus();
+      tabArea2.setSelectionRange(setSelStart, setSelEnd);      
+    }
+    if (document.activeElement.id === "TabIn") 
+      tabArea.setSelectionRange(setSelStart, setSelEnd);
+    noteSelect(cursorPos, cursorPos);
+  }
+  
+  function overType(key) {
+    oType = true;
+    var tabLines = [];
+    var tabNew = "";
+    var i;
+    setSelStart = cursorWhere + 1;
+    setSelEnd = cursorWhere + 1;
+    if (key.length > 1) return; //only single chars here!
+    charShift += 1;
+    if (tabArea.value[cursorWhere] === "\n") {
+      if (keysDown > 1) return; //prevent wrap
+      tabArea.value = [tabArea.value.slice(0, cursorWhere), tabArea.value.slice(cursorWhere)].join("-");
+    }
+    if ((/[3-90]/.test(tabArea.value[cursorWhere - 1]) && /[\d]/.test(key)) ||
+      (tabArea.value[cursorWhere - 1] === "2" && /[5-9]/.test(key)) || 
+       (/^\d\d$/.test(tabArea.value.slice(cursorWhere - 2, cursorWhere)) &&
+       /[\d]/.test(key)))  
+    { //auto dash notes except 1x 2x < 25
+          tabLines = [];
+          tabNew = "";
+          for (i = 0; i < tabStrings; i++) {
+            tabLines[i] =
+              tabSplit[i].slice(0, cursorPos) + "-" + tabSplit[i].slice(cursorPos);
+            tabNew += (i < tabStrings - 1) ? tabLines[i] + "\n" : tabLines[i] + extendTail;
+          }
+          tabArea.value = tabNew;
+          cursorWhere += cursorLine + 1;
+          if (tabArea.value[cursorWhere] === "\n") {
+            tabArea.value = [tabArea.value.slice(0, cursorWhere), tabArea.value.slice(cursorWhere)].join("-");
+          }
+      tabArea.setSelectionRange(cursorWhere, cursorWhere);
+      locateTabCursor();
+    } //auto dash
+    if (tabArea.value[cursorWhere] === "|") { //don't break measures, insert
+      tabNew = "";
+      for (i = 0; i < tabStrings; i++) {
+        tabLines[i] =
+          tabSplit[i].slice(0, cursorPos) + "-" + tabSplit[i].slice(cursorPos);
+        tabNew += (i < tabStrings - 1) ? tabLines[i] + "\n" : tabLines[i] + extendTail;
+      }
+      tabArea.value = tabNew;
+      cursorWhere += cursorLine;
+    }
+    tabArea.value = tabArea.value.slice(0, cursorWhere) + key + tabArea.value.slice(cursorWhere + 1);
+    tabArea2.value = tabArea.value;
+    setSelStart = cursorWhere + 1;
+    setSelEnd = cursorWhere + 1;
+    tabArea.setSelectionRange(cursorWhere + 1,cursorWhere + 1);
+    keysDown > 0 ? keysDown-- : keysDown = 0;    
+    getTabIn();
+    if (/[\d]/.test(key)) soundNewNote(key,cursorLine, cursorWhere);
+    noteSelect(cursorPos + 1, cursorPos + 1);
+    }  
+  
+  function soundNewNote(k,line,w) { //play new or cursor note
+    if (ctx.state !== 'running') { //don't interrupt play       
+      k = parseFloat(k);      
+      var pre = tabArea.value.slice(w - 1, w);
+      var post = tabArea.value.slice(w + 1,w + 2);
+      if (/[1-2]/.test(pre)) {
+        k += 10 * parseFloat(pre);
+        post = "";//not both!
+      }
+      if (/[\d]/.test(post) && /[1-2]/.test(k)) k = 10 * k + parseFloat(post);
+      var pp;
+      var pso = strClass[tabStrings - 1].slice(1,2);//top string class number     
+      var sp = stringPitch[strClass[tabStrings - 1 - line]];
+      var ps = pitchShift[strClass[tabStrings - 1 - line].slice(1,2) - pso + 1];
+      if (sp.length === 2) {
+        pp = [];
+        pp[0] = k + sp[0] + ps + capoShift;
+        pp[1] = k + sp[1] + ps + capoShift;
+      }
+      else pp = k + sp + ps + capoShift;
+      singleThing = pp;
+      if (pp) document.getElementById("notePlay").click();//hidden button event
+    }
+  }
+
+  function delCol() {
+    keysDown = 0;
+    //delete on all strings lines with 46 del
+    var tabLines = [];
+    var tabDel = "";
+    var i;
+    if (cursorPos >= tabSplit[0].length) {
+      event.preventDefault();
+      return;
+    }
+    if ((barFrom === "Lyr" || barFrom === "Off") 
+        && tabSplit[0][cursorPos] === "|") {
+      event.preventDefault();
+      return;
+    }
+    for (i = 0; i < tabStrings; i++) {
+      tabLines[i] =
+        tabSplit[i].slice(0, cursorPos) +
+        tabSplit[i].slice(cursorPos + 1);
+      tabDel += (i < tabStrings - 1) ? tabLines[i] + "\n" : tabLines[i] + extendTail;
+    }
+    tabArea.value = tabDel;
+    tabArea2.value = tabArea.value;
+    setSelStart = cursorWhere - cursorLine;
+    setSelEnd = setSelStart;
+    if (barFrom === "Off") {
+      navKey = true;
+      thisBarIns();
+    }
+    noteSelect(cursorPos, cursorPos);
+  }
+
+  function bkspCol() {
+    keysDown = 0;
+    var tabLines = [];
+    var tabDel = "";
+    var i;
+    charShift = -1;   
+    if ((barFrom === "Lyr" || barFrom === "Off")  &&
+        tabSplit[0][cursorPos - 1] === "|"){
+      charShift =0;
+      return;
+    } 
+    for (i = 0; i < tabStrings; i++) {
+      tabLines[i] =
+        tabSplit[i].slice(0, cursorPos - 1) + tabSplit[i].slice(cursorPos);
+      tabDel += (i < tabStrings - 1) ? tabLines[i] + "\n" : tabLines[i] + extendTail;
+    }
+    tabArea.value = tabDel;
+    tabArea2.value = tabArea.value;
+    setSelStart = cursorWhere - cursorLine - 1;
+    setSelEnd = setSelStart;
+    if (barFrom === "Off") {
+      navKey = true;
+      thisBarIns();
+    }
+    selStart = cursorPos - 1;
+    selEnd =selStart;    
+  }
+
+  function insCol() {
+    if (!paused) {//use spacebar to stop
+      document.getElementById("play").click();
+      paused = true;
+      return;
+    }
+    keysDown = 0;
+    var tabLines = [];
+    var tabDel = "";
+    var i;
+    charShift = 1;    
+    for (i = 0; i < tabStrings; i++) {
+      tabLines[i] =
+        tabSplit[i].slice(0, cursorPos) + "-" + tabSplit[i].slice(cursorPos);
+      tabDel += (i < tabStrings - 1) ? tabLines[i] + "\n" : tabLines[i] + extendTail;
+    }
+    tabArea.value = tabDel;
+    tabArea2.value = tabArea.value;
+    setSelStart = cursorWhere + cursorLine + 1;
+    setSelEnd = setSelStart;
+    if (barFrom === "Off") {
+      navKey = true;//undo skip
+      thisBarIns();
+    }
+    selStart = cursorPos + 1;
+    selEnd =selStart;
+  }
+  
+  function addBar() {//measure bar insert or add to end of lines
+    keysDown = 0;
+    var tabLines = [];
+    var tabNew = "";
+    var i;
+    charShift = 1;
+    if (barFrom === "Lyr" || barFrom === "Off") {
+      undoKey = true;
+      return;
+    }
+    if (tabSplit[0].length - 1 === cursorPos + cursorLine) { //end
+      for (i = 0; i < tabStrings; i++) {
+        tabLines[i] = tabSplit[i].slice(0, cursorPos + cursorLine) + "|";
+        tabNew += (i < tabStrings - 1) ? tabLines[i] + "\n" : tabLines[i] + extendTail;
+      }      
+    }
+    else { //not at end of line
+      for (i = 0; i < tabStrings; i++) {
+        tabLines[i] =
+          tabSplit[i].slice(0, cursorPos) + "|" + tabSplit[i].slice(cursorPos);
+        tabNew += (i < tabStrings - 1) ? tabLines[i] + "\n" : tabLines[i] + extendTail;
+      }
+    }
+    tabArea.value = tabNew;
+    tabArea2.value = tabArea.value;
+    setSelStart = cursorWhere + cursorLine + 1;
+    setSelEnd = setSelStart;
+    tabArea.setSelectionRange(setSelStart,setSelEnd);
+    selStart = cursorPos + 1;
+    selEnd =selStart;    
+  }
+  
+  function dotDown() {
+    dnArrow();
+  }
+  
+  function commaLeft() {
+    leftArrow();    
+  }
+
+  function noDownlink() {
+    var oldLink = document.getElementById("out").querySelector("a");
+    if (oldLink) {
+      window.URL.revokeObjectURL(oldLink.href);
+      document.getElementById("out").value = "";
+    }
+  }
+  
+  function makeOffline(){
+    songHtml = false;
+    saveFile();
+  }
+  
+  function saveTextFile() {
+    var split = [], cpy = [], text;
+    split = tabArea.value.split("\n");
+    for (var i = 0; i < tabStrings; i++) {
+      cpy[i] = startTab[i] + trimTail(split[i]);
+    }
+    text = cpy.join("\n");
+    var temp = document.createElement('a');
+    temp.setAttribute('href', 'data:text;charset=utf-8,' +
+      encodeURIComponent(text));
+    var fn = "CT_" + document.getElementById("songTitle").innerHTML; //filename
+    temp.setAttribute('download', fn);
+    temp.style.display = 'none';
+    document.body.appendChild(temp);
+    temp.click();
+    document.body.removeChild(temp);
+  }  
+
+  function saveFile() {
+    var trans = document.getElementById("makefiles")
+    var sbd = document.getElementById("showdebugs");
+    if (sbd) trans.removeChild(sbd);
+    var edb = document.getElementById("debugtimes");
+    if (edb) document.body.removeChild(edb);    
+    var fin = document.getElementById("fileinput");
+    if (fin) trans.removeChild(fin);
+    var fin2 = document.getElementById("fileinput2");
+    if (fin2) trans.removeChild(fin2);   
+    var mk = document.getElementById("make");
+    if (mk) trans.removeChild(mk);    
+    var lc = document.getElementById("lcss");
+    if (lc) document.head.removeChild(lc);
+    var lj = document.getElementById("ljs");
+    if (lj) document.head.removeChild(lj);
+    var lj2 = document.getElementById("ljs2");
+    if (lj2) document.head.removeChild(lj2);    
+    if(songHtml) document.getElementById("nonPrint").style.display = "none";
+    if(songHtml) document.getElementById("editButton").style.display = "block";
+    var jsf = document.getElementById("scriptSrc").value;
+    var jsf2 = document.getElementById("scriptSrc2").value;    
+    var js = document.getElementById("jScript");
+    js.innerHTML = jsf + jsf2 + js.innerHTML;
+    var ts = document.getElementById("tabSave");
+    if (ts) document.body.removeChild(ts);
+    var ls = document.getElementById("lyricSave");
+    if (ls) document.body.removeChild(ls);
+    var tu = document.getElementById("tuneSave");
+    if (tu) document.body.removeChild(tu);
+    var ss = document.getElementById("stringSave");
+    if (ss) document.body.removeChild(ss);
+    var sn = document.getElementById("songSave");
+    if (sn) document.body.removeChild(sn);
+    var ins = document.getElementById("instSave");
+    if (ins) document.body.removeChild(ins);
+    var ltr = document.getElementById("ltrSave");
+    if (ltr) document.body.removeChild(ltr);
+    var tempo = document.getElementById("tempo");
+    var tsv = document.getElementById("temposave");
+    if (tsv) document.body.removeChild(tsv);
+    var psv = document.getElementById("pitchsave");
+    if (psv) document.body.removeChild(psv);
+    var psh = "<textarea id='pitchsave' style='display:none'>" +
+      pitchShift + "</textarea>";    
+    var bpm = "<textarea id='temposave' style='display:none'>" +
+      tempo.value + "</textarea>";
+    var tab = "<textarea id='tabSave' style='display:none'>" +
+      tabArea.value + "</textarea>";
+    var lyr = "<textarea id='lyricSave' style='display:none'>" +
+      lyricArea.value + "</textarea>";
+    var tun = "<textarea id='tuneSave' style='display:none'>" +
+      tuneArea.value + "</textarea>";
+    var str = "<textarea id='stringSave' style='display:none'>" +
+      document.getElementById("numStrings").value + "</textarea>";
+    var instTxt = "Guitar";
+    if (document.getElementById("instr"))
+      instTxt = document.getElementById("instr").innerHTML;
+    var fn = document.getElementById("songTitle").innerHTML; //filename    
+    var song = "<div id='songSave' style='display:none'>" + fn + "</div>";
+    var lett = "<div id='ltrSave' style='display:none'>" + lyricLtrSpace + "</div>";
+    var inst = "<div id='instSave' style='display:none'>" + instTxt + "</div>";
+    
+    var hh = `<!DOCTYPE html>
+<html>
+<head>`;
+    var hb = `
+</head>
+<body>`
+    var bh = `
+</body>
+</html>`;
+    document.title = fn;
+    var head = hh + document.querySelector("head").innerHTML.trim();
+    var body = hb + document.querySelector("body").innerHTML.trim();
+    var text = head + body + tab + lyr + song + tun + str + inst + lett + bpm + psh + bh;
+    var temp = document.createElement('a');
+    temp.setAttribute('href', 'data:text/html;charset=utf-8,' +
+      encodeURIComponent(text));
+    if (fn === "") fn = "ColorTab.html";
+    if (!songHtml) fn = "index.html";
+    temp.setAttribute('download', fn);
+    temp.style.display = 'none';
+    document.body.appendChild(temp);
+    temp.click();
+    document.body.removeChild(temp);
+    document.getElementById("nonPrint").style.display = "block";
+    document.getElementById("editButton").style.display = "none";
+  }
+
+  function barsNg(i) {
+    var msg = `<h2>Measure |'s not aligned</h2>        ----|-----------|------
+        ----|-----------|------
+        ----|------------|-----
+        ----|-----------|------
+        ----|-----------|------
+        ----|-----------|------
+
+<button class="toggle off"> | </button> to ignore and stop error messages,
+see the Help Etc. section
+`
+    lyricBarsFromTab();
+    var nearBar = barNumb.innerHTML.slice(i - 2, i + 6).trim();
+    var loc = "First problem found at column " + i + " near measure " + nearBar;
+    document.getElementById("message").innerHTML = msg + loc;
+    document.getElementById("msgdiv").style.display = "block";
+    document.getElementById("msgdiv").focus();
+  }
+
+  function stringNames() {
+    var i, strSplit = [],
+      strText =
+      ` e|
  B|
  G|
  D|
  A|
  E|`;
-    
     // initialize startTab
     strSplit = strText.split("\n");
-    for (i=0;i<6;i++) {
+    for (i = 0; i < 6; i++) {
       startTab[i] = strSplit[i];
     }
     return strText;
   } // default line start
-  
-  function greenSleeves()  {
+
+  function greenSleeves() {
     var txt =
-`e|-------||-------0--1-0-|--------------|--------------|-------------|
+      `e|-------||-------0--1-0-|--------------|--------------|-------------|
 B|-------||-1---3--------|-3---0------0-|-1------------|-0-----------|
 G|-----2-||--------------|-------0--2---|-----2-2--1-2-|-----1-----2-|
 D|-------||--------------|--------------|--------------|-------2-----|
 A|-------||-0-----3------|--------------|-0-----0------|-------------|
-E|-------||--------------|-3-----3------|--------------|-0-----0-----|`;
-  newLines = txt.split("\n");
-  append = false;
-  document.getElementById("ctOut").innerHTML = "";
-  findTab();
-  document.getElementById("songTitle").value = "Greensleeves example";
-}
-
-  
-// parts for save as html including local fonts for offline
-  function pageHead() {
-    var head =
-`<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <title>ColorTab</title>
-  <meta name="viewport" content="width=device-width, height=device-height, initial-scale=1, user-scalable=no" />
-  <meta name="description" content="ColorTab">
-  <meta name="author" content="Keith Thomas">
-<style>
-html{font-size: calc(1em + 1vw)}body{margin:0;font-family:'Crimson Text',serif;line-height:1.2;color:#ddd;background-color:#000}@media print{body{background-color:#fff!important}.b{color:#000!important;background:#fff!important}#songTitle{color:#000!important;border:0!important;box-shadow:none!important;background-color:#fff!important}}#ctOut{transform-origin:0 0;font-family:'Roboto Mono';margin:10px 0 0 0;font-size:16.65px;font-weight:500;line-height:1}#sTitle{width:100%}#songTitle{display:block;width:auto;margin:8px auto;font-size:.7rem;font-family:'Crimson Text',serif;color:#fff;text-align:center;line-height:1.2;border-radius:5px;background-color:#000}ol{list-style-type:none;padding:0;margin:0}li{word-break:break-all;display:inline-block;padding:0 5px 0 5px;margin-bottom:6px}.o{color:red;background:grey}.b{font-family:'Crimson Text',serif;font-size:23.27px;color:#fff;background:#000;padding:0 2px 0 2px}.c{border-top:6px solid grey}.g{border-top:6px solid grey;padding:0;margin:0;color:grey;background:grey}.d{font-weight:700;color:#000;background:#cccbcb}.h{font-weight:700;color:#000;padding:0;background:#cccbcb}.t{position:relative;top:-30px;left:500px;padding-bottom:10px}.e{color:#000;background:#fff}.B{color:#000;background:#ffdc00}.G{color:#000;background:#3cc8f4}.D{color:#fff;background:#1eb24b}.A{color:#fff;background:#d72028}.E{color:#fff;background:#0a50a0}#bottom{position:absolute;bottom:0;width:100%;height:1.5rem}#foot{font-size:16px;width:250px;margin:0 auto;display:block;bottom:0}a, a:visited {
-  color:white;
-}
-@font-face {
-  font-family: 'Crimson Text';
-  font-style: normal;
-  font-weight: 400;
-src: url(data:application/font-woff;charset=utf-8;base64,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) format('woff');
-    font-weight: normal;
-    font-style: normal;
-
-}
-@font-face {
-  font-family: 'Roboto Mono';
-  font-style: normal;
-  font-weight: 400;
-src: url(data:application/font-woff;charset=utf-8;base64,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) format('woff');
-    font-weight: normal;
-    font-style: normal;
-
-}
-</style>
-</head>
-<body>
-  <div id="main">
-  <div id="content">
-    <div id="sTitle"><textarea contenteditable="true" spellcheck="false" id="songTitle" rows="1" cols="40" placeholder="Song title">`;
-  return head;
-}
-
-  function pageTail() {
-    var tail =`</ol></div>
-<div id="bottom">
-<footer id="foot">&copy; Copyright 2020, Keith Thomas<br>
-  <a href="http://keith-thomas.com/colortab/">http://keith-thomas.com/colortab/</a></footer>
-</div>
-</div>
-</div>
-</body>
-</html>`;
-    return tail;
+E|-------||--------------|-3-----0------|--------------|-0-----0-----|`;
+    newLines = txt.split("\n");
+    append = false;
+    ctabOut.innerHTML = "";
+    findTab();
+    document.getElementById("songTitle").innerHTML = "Greensleeves";
   }
-
+  
 }());
+/*
+Portions of soundfont-player and its dependencies are included in ColorTab under this license:
+
+https://github.com/danigb/soundfont-player/blob/master/LICENSE
+The MIT License
+
+Copyright (c) 2015 Daniel Gómez Blasco <danigb@gmail.com>
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+*/
+
+!function(){return function e(t,n,r){function o(a,u){if(!n[a]){if(!t[a]){var s="function"==typeof require&&require;if(!u&&s)return s(a,!0);if(i)return i(a,!0);var c=new Error("Cannot find module '"+a+"'");throw c.code="MODULE_NOT_FOUND",c}var f=n[a]={exports:{}};t[a][0].call(f.exports,function(e){return o(t[a][1][e]||e)},f,f.exports,e,t,n,r)}return n[a].exports}for(var i="function"==typeof require&&require,a=0;a<r.length;a++)o(r[a]);return o}}()({1:[function(e){e("soundfont-player")},{"soundfont-player":15}],2:[function(e,t){t.exports=function(e){var t=e.createGain(),i=t._voltage=function(e){var t=e.createBufferSource(),n=e.createBuffer(1,2,e.sampleRate);return n.getChannelData(0).set(r),t.buffer=n,t.loop=!0,t}(e),a=o(i),u=o(i),s=o(i);return t._startAmount=o(u),t._endAmount=o(s),t._multiplier=o(a),t._multiplier.connect(t),t._startAmount.connect(t),t._endAmount.connect(t),t.value=a.gain,t.startValue=u.gain,t.endValue=s.gain,t.startValue.value=0,t.endValue.value=0,Object.defineProperties(t,n),t};var n={attack:{value:0,writable:!0},decay:{value:0,writable:!0},sustain:{value:1,writable:!0},release:{value:0,writable:!0},getReleaseDuration:{value:function(){return this.release}},start:{value:function(e){var t=this._multiplier.gain,n=this._startAmount.gain,r=this._endAmount.gain;this._voltage.start(e),this._decayFrom=this._decayFrom=e+this.attack,this._startedAt=e;var o=this.sustain;t.cancelScheduledValues(e),n.cancelScheduledValues(e),r.cancelScheduledValues(e),r.setValueAtTime(0,e),this.attack?(t.setValueAtTime(0,e),t.linearRampToValueAtTime(1,e+this.attack),n.setValueAtTime(1,e),n.linearRampToValueAtTime(0,e+this.attack)):(t.setValueAtTime(1,e),n.setValueAtTime(0,e)),this.decay&&t.setTargetAtTime(o,this._decayFrom,i(this.decay))}},stop:{value:function(e,t){t&&(e-=this.release);var n=e+this.release;if(this.release){var r=this._multiplier.gain,o=this._startAmount.gain,a=this._endAmount.gain;r.cancelScheduledValues(e),o.cancelScheduledValues(e),a.cancelScheduledValues(e);var u=i(this.release);if(this.attack&&e<this._decayFrom){var s=function(e,t,n,r,o){var i=e+(o-n)/(r-n)*(t-e);i<=e&&(i=e);i>=t&&(i=t);return i}(0,1,this._startedAt,this._decayFrom,e);r.linearRampToValueAtTime(s,e),o.linearRampToValueAtTime(1-s,e),o.setTargetAtTime(0,e,u)}a.setTargetAtTime(1,e,u),r.setTargetAtTime(0,e,u)}return this._voltage.stop(n),n}},onended:{get:function(){return this._voltage.onended},set:function(e){this._voltage.onended=e}}},r=new Float32Array([1,1]);function o(e){var t=e.context.createGain();return e.connect(t),t}function i(e){return Math.log(e+1)/Math.log(100)}},{}],3:[function(e,t){"use strict";t.exports={decode:function(e,t){for(var n,r,o,i=e.replace(/[^A-Za-z0-9\+\/]/g,""),a=i.length,u=t?Math.ceil((3*a+1>>2)/t)*t:3*a+1>>2,s=new Uint8Array(u),c=0,f=0,l=0;l<a;l++)if(r=3&l,c|=((o=i.charCodeAt(l))>64&&o<91?o-65:o>96&&o<123?o-71:o>47&&o<58?o+4:43===o?62:47===o?63:0)<<18-6*r,3===r||a-l==1){for(n=0;n<3&&f<u;n++,f++)s[f]=c>>>(16>>>n&24)&255;c=0}return s}}},{}],4:[function(e,t){"use strict";t.exports=function(e,t){return new Promise(function(n,r){var o=new XMLHttpRequest;t&&(o.responseType=t),o.open("GET",e),o.onload=function(){200===o.status?n(o.response):r(Error(o.statusText))},o.onerror=function(){r(Error("Network Error"))},o.send()})}},{}],5:[function(e,t){"use strict";var n=e("./base64"),r=e("./fetch");function o(e){return function(t){return"string"==typeof t&&e.test(t)}}function i(e,t){return"string"==typeof e?e+t:"function"==typeof e?e(t):t}function a(e,t,n,r){var o=t instanceof ArrayBuffer?u:s(t)?c:function(e){return e&&"function"==typeof e.then}(t)?f:l(t)?d:function(e){return e&&"object"==typeof e}(t)?p:h(t)?m:v(t)?y:g(t)?b:null;return o?o(e,t,n||{}):r?Promise.resolve(r):Promise.reject("Source not valid ("+t+")")}function u(e,t){return new Promise(function(n,r){e.decodeAudioData(t,function(e){n(e)},function(){r("Can't decode audio data ("+t.slice(0,30)+"...)")})})}a.fetch=r;var s=o(/\.(mp3|wav|ogg)(\?.*)?$/i);function c(e,t,n){var r=i(n.from,t);return a(e,a.fetch(r,"arraybuffer"),n)}function f(e,t,n){return t.then(function(t){return a(e,t,n)})}var l=Array.isArray;function d(e,t,n){return Promise.all(t.map(function(t){return a(e,t,n,t)}))}function p(e,t,n){var r={},o=Object.keys(t).map(function(o){if(n.only&&-1===n.only.indexOf(o))return null;var i=t[o];return a(e,i,n,i).then(function(e){r[o]=e})});return Promise.all(o).then(function(){return r})}var h=o(/\.json(\?.*)?$/i);function m(e,t,n){var r=i(n.from,t);return a(e,a.fetch(r,"text").then(JSON.parse),n)}var v=o(/^data:audio/);function y(e,t,r){var o=t.indexOf(",");return a(e,n.decode(t.slice(o+1)).buffer,r)}var g=o(/\.js(\?.*)?$/i);function b(e,t,n){var r=i(n.from,t);return a(e,a.fetch(r,"text").then(T),n)}function T(e){var t=e.indexOf("MIDI.Soundfont.");if(t<0)throw Error("Invalid MIDI.js Soundfont format");t=e.indexOf("=",t)+2;var n=e.lastIndexOf(",");return JSON.parse(e.slice(t,n)+"}")}"object"==typeof t&&t.exports&&(t.exports=a),"undefined"!=typeof window&&(window.loadAudio=a)},{"./base64":3,"./fetch":4}],6:[function(e,t,n){(function(r){(function(){!function(e){if("object"==typeof n&&void 0!==t)t.exports=e();else if("function"==typeof define&&define.amd)define([],e);else{("undefined"!=typeof window?window:void 0!==r?r:"undefined"!=typeof self?self:this).midimessage=e()}}(function(){return function t(n,r,o){function i(u,s){if(!r[u]){if(!n[u]){var c="function"==typeof e&&e;if(!s&&c)return c(u,!0);if(a)return a(u,!0);var f=new Error("Cannot find module '"+u+"'");throw f.code="MODULE_NOT_FOUND",f}var l=r[u]={exports:{}};n[u][0].call(l.exports,function(e){var t=n[u][1][e];return i(t||e)},l,l.exports,t,n,r,o)}return r[u].exports}for(var a="function"==typeof e&&e,u=0;u<o.length;u++)i(o[u]);return i}({1:[function(e,t,n){"use strict";Object.defineProperty(n,"__esModule",{value:!0}),n.default=function(e){return new function(e){if(this._event=e,this._data=e.data,this.receivedTime=e.receivedTime,!(this._data&&this._data.length<2))switch(this._messageCode=240&e.data[0],this.channel=15&e.data[0],this._messageCode){case 128:this.messageType="noteoff",this.key=127&e.data[1],this.velocity=127&e.data[2];break;case 144:this.messageType="noteon",this.key=127&e.data[1],this.velocity=127&e.data[2];break;case 160:this.messageType="keypressure",this.key=127&e.data[1],this.pressure=127&e.data[2];break;case 176:this.messageType="controlchange",this.controllerNumber=127&e.data[1],this.controllerValue=127&e.data[2],120===this.controllerNumber&&0===this.controllerValue?this.channelModeMessage="allsoundoff":121===this.controllerNumber?this.channelModeMessage="resetallcontrollers":122===this.controllerNumber?0===this.controllerValue?this.channelModeMessage="localcontroloff":this.channelModeMessage="localcontrolon":123===this.controllerNumber&&0===this.controllerValue?this.channelModeMessage="allnotesoff":124===this.controllerNumber&&0===this.controllerValue?this.channelModeMessage="omnimodeoff":125===this.controllerNumber&&0===this.controllerValue?this.channelModeMessage="omnimodeon":126===this.controllerNumber?this.channelModeMessage="monomodeon":127===this.controllerNumber&&(this.channelModeMessage="polymodeon");break;case 192:this.messageType="programchange",this.program=e.data[1];break;case 208:this.messageType="channelpressure",this.pressure=127&e.data[1];break;case 224:this.messageType="pitchbendchange";var t=127&e.data[2],n=127&e.data[1];this.pitchBend=(t<<8)+n}}(e)},t.exports=n.default},{}]},{},[1])(1)})}).call(this)}).call(this,"undefined"!=typeof self?self:"undefined"!=typeof window?window:{})},{}],7:[function(e,t,n){var r,o;r=this,o=function(e){"use strict";function t(e,t){return Array(t+1).join(e)}function n(e){return"number"==typeof e}function r(e,t){return Math.pow(2,(e-69)/12)*(t||440)}function o(e,t,n){if("string"!=typeof e)return null;var o=s.exec(e);if(!o||!t&&o[4])return null;var i={letter:o[1].toUpperCase(),acc:o[2].replace(/x/g,"##")};i.pc=i.letter+i.acc,i.step=(i.letter.charCodeAt(0)+3)%7,i.alt="b"===i.acc[0]?-i.acc.length:i.acc.length;var a=c[i.step]+i.alt;return i.chroma=a<0?12+a:a%12,o[3]&&(i.oct=+o[3],i.midi=a+12*(i.oct+1),i.freq=r(i.midi,n)),t&&(i.tonicOf=o[4]),i}function i(e){return n(e)?e<0?t("b",-e):t("#",e):""}function a(e){return n(e)?""+e:""}function u(e){if((n(e)||function(e){return"string"==typeof e}(e))&&e>=0&&e<128)return+e;var t=o(e);return t&&function(e){return void 0!==e}(t.midi)?t.midi:null}var s=/^([a-gA-G])(#{1,}|b{1,}|x{1,}|)(-?\d*)\s*(.*)\s*$/,c=[0,2,4,5,7,9,11],f="CDEFGAB";e.regex=function(){return s},e.parse=o,e.build=function e(t,n,r){return null==t?null:t.step?e(t.step,t.alt,t.oct):t<0||t>6?null:f.charAt(t)+i(n)+a(r)},e.midi=u,e.freq=function(e,t){var n=u(e);return null===n?null:r(n,t)},e.letter=function(e){return(o(e)||{}).letter},e.acc=function(e){return(o(e)||{}).acc},e.pc=function(e){return(o(e)||{}).pc},e.step=function(e){return(o(e)||{}).step},e.alt=function(e){return(o(e)||{}).alt},e.chroma=function(e){return(o(e)||{}).chroma},e.oct=function(e){return(o(e)||{}).oct}},"object"==typeof n&&void 0!==t?o(n):"function"==typeof define&&define.amd?define(["exports"],o):o(r.NoteParser=r.NoteParser||{})},{}],8:[function(e,t){t.exports=function(e){return e.on=function(t,n){if(1===arguments.length&&"function"==typeof t)return e.on("event",t);var r,o,i="on"+t,a=e[i];return e[i]=a?(r=a,o=n,function(e,t,n,i){r(e,t,n,i),o(e,t,n,i)}):n,e},e}},{}],9:[function(e,t){"use strict";var n=e("./player"),r=e("./events"),o=e("./notes"),i=e("./scheduler"),a=e("./midi");function u(e,t,u){return a(i(o(r(n(e,t,u)))))}"object"==typeof t&&t.exports&&(t.exports=u),"undefined"!=typeof window&&(window.SamplePlayer=u)},{"./events":8,"./midi":10,"./notes":11,"./player":12,"./scheduler":13}],10:[function(e,t){var n=e("midimessage");t.exports=function(e){return e.listenToMidi=function(t,r){var o={},i=r||{},a=i.gain||function(e){return e/127};return t.onmidimessage=function(t){var r=t.messageType?t:n(t);if("noteon"===r.messageType&&0===r.velocity&&(r.messageType="noteoff"),!i.channel||r.channel===i.channel)switch(r.messageType){case"noteon":o[r.key]=e.play(r.key,0,{gain:a(r.velocity)});break;case"noteoff":o[r.key]&&(o[r.key].stop(),delete o[r.key])}},e},e}},{midimessage:6}],11:[function(e,t){"use strict";var n=e("note-parser"),r=function(e){return function(e){return null!==e&&e!==[]&&e>=0&&e<129}(e)?+e:n.midi(e)};t.exports=function(e){if(e.buffers){var t=e.opts.map,n="function"==typeof t?t:r,o=function(e){return e?n(e)||e:null};e.buffers=function(e,t){return Object.keys(e).reduce(function(n,r){return n[t(r)]=e[r],n},{})}(e.buffers,o);var i=e.start;e.start=function(e,t,n){var r=o(e),a=r%1;return a&&(r=Math.floor(r),n=Object.assign(n||{},{cents:Math.floor(100*a)})),i(r,t,n)}}return e}},{"note-parser":14}],12:[function(e,t){"use strict";var n=e("adsr"),r={},o={gain:3,attack:.01,decay:.1,sustain:.9,release:.3,loop:!1,cents:0,loopStart:0,loopEnd:0};function i(e){return"number"==typeof e}var a=["attack","decay","sustain","release"];t.exports=function(e,t,u){var s=0,c={},f=e.createGain();f.gain.value=1;var l=Object.assign({},o,u),d={context:e,out:f,opts:l};return t instanceof AudioBuffer?d.buffer=t:d.buffers=t,d.start=function(t,n,o){if(d.buffer&&null!==t)return d.start(null,t,n);var i=t?d.buffers[t]:d.buffer,a=o||r;n=Math.max(e.currentTime,n||0),d.emit("start",n,t,a);var u=p(t,i,a);return u.id=function(t,n){return n.id=s++,c[n.id]=n,n.source.onended=function(){var t=e.currentTime;n.source.disconnect(),n.env.disconnect(),n.disconnect(),d.emit("ended",t,n.id,n)},n.id}(0,u),u.env.start(n),u.source.start(n),d.emit("started",n,u.id,u),a.duration&&u.stop(n+a.duration),u},d.play=function(e,t,n){return d.start(e,t,n)},d.stop=function(e,t){var n;return(t=t||Object.keys(c)).map(function(t){return(n=c[t])?(n.stop(e),n.id):null})},d.connect=function(e){return f.connect(e),d},d.emit=function(e,t,n,r){d.onevent&&d.onevent(e,t,n,r);var o=d["on"+e];o&&o(t,n,r)},d;function p(t,r,o){var u,s=e.createGain();return s.gain.value=0,s.connect(f),s.env=function(e,t,r){var o=n(e),u=t.adsr||r.adsr;return a.forEach(function(e,n){o[e]=u?u[n]:t[e]||r[e]}),o.value.value=i(t.gain)?t.gain:i(r.gain)?r.gain:1,o}(e,o,l),s.env.connect(s.gain),s.source=e.createBufferSource(),s.source.buffer=r,s.source.connect(s),s.source.loop=o.loop||l.loop,s.source.playbackRate.value=(u=o.cents||l.cents)?Math.pow(2,u/1200):1,s.source.loopStart=o.loopStart||l.loopStart,s.source.loopEnd=o.loopEnd||l.loopEnd,s.stop=function(n){var r=n||e.currentTime;d.emit("stop",r,t);var o=s.env.stop(r);s.source.stop(o)},s}}},{adsr:2}],13:[function(e,t){"use strict";var n=Array.isArray,r={};t.exports=function(e){return e.schedule=function(t,o){var i,a,u,s,c=e.context.currentTime,f=t<c?c:t;return e.emit("schedule",f,o),o.map(function(t){return t?(n(t)?(i=t[0],a=t[1]):(i=t.time,a=t),!function(e){return e&&"object"==typeof e}(a)?(u=a,s=r):(u=a.name||a.key||a.note||a.midi||null,s=a),e.start(u,f+(i||0),s)):null})},e}},{}],14:[function(e,t){"use strict";var n=/^([a-gA-G])(#{1,}|b{1,}|x{1,}|)(-?\d*)\s*(.*)\s*$/;var r=[0,2,4,5,7,9,11];function o(e,t,o){if("string"!=typeof e)return null;var a=n.exec(e);if(!a||!t&&a[4])return null;var u={letter:a[1].toUpperCase(),acc:a[2].replace(/x/g,"##")};return u.pc=u.letter+u.acc,u.step=(u.letter.charCodeAt(0)+3)%7,u.alt="b"===u.acc[0]?-u.acc.length:u.acc.length,u.chroma=r[u.step]+u.alt,a[3]&&(u.oct=+a[3],u.midi=u.chroma+12*(u.oct+1),u.freq=i(u.midi,o)),t&&(u.tonicOf=a[4]),u}function i(e,t){return Math.pow(2,(e-69)/12)*(t||440)}var a={parse:o,regex:function(){return n},midiToFreq:i};["letter","acc","pc","step","alt","chroma","oct","midi","freq"].forEach(function(e){a[e]=function(t){var n=o(t);return n&&void 0!==n[e]?n[e]:null}}),t.exports=a},{}],15:[function(e,t){"use strict";var n=e("audio-loader"),r=e("sample-player");function o(e){return/\.js(\?.*)?$/i.test(e)}function i(e,t,n){return"offline"===e?offline:"https://gleitz.github.io/midi-js-soundfonts/"+e+"-"+(n="ogg"===n?n:"mp3")+".js"}var a=e("./legacy");a.instrument=function e(t,a,u){if(1===arguments.length)return function(n,r){return e(t,n,r)};var s=u||{},c=s.isSoundfontURL||o,f=s.nameToUrl||i,l=c(a)?a:f(a,s.soundfont,s.format);return n(t,l,{only:s.only||s.notes}).then(function(e){var n=r(t,e,s).connect(s.destination?s.destination:t.destination);return n.url=l,n.name=a,n})},a.nameToUrl=i,"object"==typeof t&&t.exports&&(t.exports=a),"undefined"!=typeof window&&(window.Soundfont=a)},{"./legacy":16,"audio-loader":5,"sample-player":9}],16:[function(e,t){"use strict";var n=e("note-parser");function r(e,t){if(!(this instanceof r))return new r(e);this.nameToUrl=t||r.nameToUrl,this.ctx=e,this.instruments={},this.promises=[]}function o(e,t){return t=t||{},function(r,o,i,a){var u=r>0&&r<129?+r:n.midi(r),s=u?n.midiToFreq(u,440):null;if(s){i=i||.2;var c=(a=a||{}).destination||t.destination||e.destination,f=a.vcoType||t.vcoType||"sine",l=a.gain||t.gain||.4,d=e.createOscillator();d.type=f,d.frequency.value=s;var p=e.createGain();return p.gain.value=l,d.connect(p),p.connect(c),d.start(o),i>0&&d.stop(o+i),d}}}r.prototype.onready=function(e){Promise.all(this.promises).then(e)},r.prototype.instrument=function(e,t){var n=this.ctx;if((e=e||"default")in this.instruments)return this.instruments[e];var i={name:e,play:o(n,t)};if(this.instruments[e]=i,"default"!==e){var a=r.instrument(n,e,t).then(function(e){return i.play=e.play,i});this.promises.push(a),i.onready=function(e){a.then(e)}}else i.onready=function(e){e()};return i},r.loadBuffers=function(e,t,n){return r.instrument(e,t,n).then(function(e){return e.buffers})},r.noteToMidi=n.midi,t.exports=r},{"note-parser":7}]},{},[1]);
+
+
+
+
+/* end of code from soundfont-player*/
