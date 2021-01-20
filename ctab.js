@@ -2493,10 +2493,11 @@ Spa ces and CaPiTals are ok
     document.getElementById("moreSpace").onclick = spread;
     document.getElementById("lessSpace").onclick = squeeze;
     document.getElementById("helpButton").onclick = help;
-    document.getElementById("helpText").onclick = help;
+    //document.getElementById("helpText").onclick = help;
     document.getElementById("bck").onclick = undo;
     document.getElementById("fwd").onclick = redo;
     document.getElementById("savFile").onclick = saveFile;
+    document.getElementById("helpdownload").onclick = saveFile;    
     document.getElementById("savtxt").onclick = saveTextFile;
     document.getElementById("numStrings").onchange = changeStrings;
     document.getElementById("barMode").onchange = barMaster;

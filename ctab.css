@@ -804,6 +804,9 @@ li {
 a,a:visited {
 	color: #fff;
 }
+  a.helpLink {
+    color: blue;
+  }  
 button {
 	background-color: #000;
   border-color: #888;
@@ -964,6 +967,7 @@ textarea {
 	position: fixed;
 	right: 15px;
 	top: 5px;
+  z-index: 1000;
 }
 #helpText {
   font-family: 'CrimsonText','Freebrat';
@@ -990,6 +994,11 @@ textarea {
 	padding: 10px;
 	width: 340px;
 }
+.helpLink {
+  font-family: 'CrimsonText','Freebrat';
+	background-color: #fff;
+	color: #000;
+}  
 .notehelp {
   color:#000;
   font-family: 'Freebrat';

@@ -55,7 +55,7 @@
       <li class="s5 liv">A||------|------|-----|----|----|--</li>
       <li class="s6 liv">E||------|------|-----|----|----|--</li>
     </ul>
-  <h3><em>Click <button>&#x00d9;</button> to download this web app for offline and sharing.<br>Video demonstrations are on colortab.org and YouTube</em></h3>
+  <h3><em>Click <button id="helpdownload">&#x00d9;</button> to download this web app for offline and sharing.<br>Video demonstrations are on <a class="helpLink" href="https://www.colortab.org/videos/" target="_blank" rel="noreferrer noopener">ColorTab.org</a> and <a class="helpLink" href="https://www.youtube.com/playlist?list=PL9FT38edu9jsg5VcTDLshI09a85wQPGsB" target="_blank" rel="noreferrer noopener">YouTube</a></em></h3>
     <h3>Introducing ColorTab</h3>
     <p>Create or convert guitar tablature using a new compact notation. ColorTab shows strings by color on a single line instead of six lines of dashes. Converted songs are more convenient  on screen or printed page. ColorTab saves space but is easy to read and understand. Chords are under gray in low to high string order. Here is Greensleeves in text tablature and converted (this example will load if <button>Help</button> is clicked while the Tab section is empty).</p>
     <div id="exgreen">
@@ -94,6 +94,15 @@ E||-------||--------------|-3-----0------|--------------|-0-----0-----|</textare
     <p>The <button>&#x00d9;</button> downloads songs as ColorTab web pages (local .html files) using the song title as file name. These can be used offline without Internet, they include all editing tools and can resave as new songs or versions. Tab text files are loaded directly with <button >Open</button> or by drag and drop in the tab area. Use <button>Save</button> to make a ColorTab text file that includes music symbols and has a very small file size. The new tab from the file will be inserted at the cursor. Print ColorTab to <mark>PDF</mark> or paper using the browser print function. The background is white, text and controls do not print, and page scaling and rotation can be set as desired. Choose the print background graphics option for color. Import tab from <mark>MusicXML</mark> using the link at the bottom. <button>Copy</button> tab and paste in a new text file to save ascii tab.</p>
   
     <h3>Duration and Timing</h3>
+    <p>See <a class="helpLink" href="https://www.colortab.org/duration-and-timing/" target="_blank" rel="noreferrer noopener">this</a> for additional details and examples. These are the rules followed in ColorTab for musical note symbols like &#xE1d9; and &#xE1DA;.</p>
+    <p>&#xE111; Symbols that are not by a fret number have a gray background in the ColorTab. These change defaults and affect all following notes.</p>
+    <p>&#xE111; Symbols by a fret number will have the color of the string and only affect that note (except in chords).</p>
+    <p>&#xE111; A down stem note adds to the duration of all following notes, as in "let ring" This is canceled by a down stem grace note.</p>
+    <p>&#xE111; Fret numbers with down stem notes have duration set but this does not affect timing, otherwise duration equals timing</p>
+    <p>&#xE111; Fret numbers with multiple down stem notes have duration added for each, so two half notes make a "down stem" whole note.</p>
+  <p>&#xE111; Fret numbers followed by multiple up stem notes play as repeated notes of the same pitch.</p>
+  <p>&#xE111; Each note in a chord inherits timing and duration of notes below in the chord, unless followed by adjacent note symbols.</p>
+  <p>&#xE111;  Preceding a note symbol with a superscript ³ will use triplet timing for the next three notes or rests.</p>
   
     <h3>Playback and Sound</h3>
 
