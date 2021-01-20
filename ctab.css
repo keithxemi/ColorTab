@@ -969,6 +969,16 @@ textarea {
 	top: 5px;
   z-index: 1000;
 }
+#helpcolorButton {
+  font-family: 'Freebrat';
+  font-size: 20px;
+  vertical-align: middle;
+  height: 28px;
+  background-image: linear-gradient(to bottom,
+  #fceb80 20%, #9be2f8 20% 40%, #6fdd90 40% 60%, #e27479 60% 80%, #5c8dc4 80%);
+/*  background-image: linear-gradient(to bottom,
+  #d1d1d1 20%, #b1b1b1 20% 40%, #939393 40% 60%, #717171 60% 80%, #505050 80%) */   
+}  
 #helpText {
   font-family: 'CrimsonText','Freebrat';
 	background-color: #fff;
@@ -1023,12 +1033,10 @@ textarea {
 	border-style: hidden;
 	box-shadow: none;
 	font-family: 'Freebrat';
-	font-size: 20px;
+	font-size: 14px;
 	margin: auto;
   width:100%;
 	max-width: 600px;
-  overflow-x:scroll;
-  overflow-y: hidden
 	white-space: pre;
 }
 #ctex {
