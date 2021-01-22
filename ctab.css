@@ -729,8 +729,8 @@ body {
 #editButton {
   display: none;
   position: absolute;
-  right: 15px;
-  top: 30px;
+  right: 65px;
+  top: 0px;
   z-index: 100;
 }
 /*  #noteButton, #codaButton {
@@ -965,7 +965,7 @@ textarea {
 }
 #helpButton {
 	position: fixed;
-	right: 15px;
+	right: 5px;
 	top: 5px;
   z-index: 1000;
 }
