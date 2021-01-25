@@ -1260,7 +1260,7 @@ E||-------||--------------|-3-----0------|--------------|-0-----0-----|</textare
       <li class="s6 liv">E||------|------|-----|----|----|--</li>
     </ul>
   <p></p>  
-  <p>Version 1.00 1/20/2021</p>
+  <p>Version 1.01 1/25/2021</p>
   </div><!--help text-->
     
       
@@ -1433,7 +1433,7 @@ E||-------||--------------|-3-----0------|--------------|-0-----0-----|</textare
     
     <footer id="foot"><a href="http://colortab.org/" target="_blank" rel="noreferrer noopener">ColorTab.org</a>&nbsp;&nbsp;
       <a href="http://colortab.org/musicxml/" target="_blank" rel="noreferrer noopener">Import MusicXML</a>
-      <br>© Copyright 2021, Keith Thomas<br>Ðownstem Ðuration version 1.00</footer>
+      <br>© Copyright 2021, Keith Thomas<br>Ðownstem Ðuration version 1.01</footer>
   </div>  
 <script id="jScript">/*eslint-env es6, browser, amd*/
 /*eslint no-irregular-whitespace: ["error", { "skipRegExps": true }]*/
@@ -1455,6 +1455,7 @@ E||-------||--------------|-3-----0------|--------------|-0-----0-----|</textare
   var capoShift = 0;
   var pitchShift = ["",0,0,0,0,0,0,0,0,0];//user editable string note shifts
   var oType = false;//overtype keyup bypass
+  var AudioContext = window.AudioContext || window.webkitAudioContext;  
   var ctx = new AudioContext();//suspend onload
   var showButtons = false;//show notes numbers and durations
   var paused = true;//not playing

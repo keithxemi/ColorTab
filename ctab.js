@@ -18,6 +18,7 @@
   var capoShift = 0;
   var pitchShift = ["",0,0,0,0,0,0,0,0,0];//user editable string note shifts
   var oType = false;//overtype keyup bypass
+  var AudioContext = window.AudioContext || window.webkitAudioContext;  
   var ctx = new AudioContext();//suspend onload
   var showButtons = false;//show notes numbers and durations
   var paused = true;//not playing
