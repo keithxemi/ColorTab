@@ -40,7 +40,7 @@
   <button id="notePlay" style="display:none"></button>
 
   <div id="main">
-    <div id="topleft"><button id="menuTog" class="transport">&#xe868;</button><button id="savFile" class="transport">&#x00d9;</button></div> 
+    <div id="topleft"><button id="menuTog" class="transport">&#xe868;</button><button id="sharebutton" class="transport">&#x00da;</button></div> 
     <button id="helpButton" type="button">Help</button>    
     <div id="makefiles"><button id="showdebugs">debug</button>
       <input type="file" id="fileinput" accept=".js" /><input type="file" id="fileinput2" accept=".js" /><button id ="make" type="button">Make Offline</button>
@@ -150,7 +150,7 @@ E||-------||--------------|-3-----0------|--------------|-0-----0-----|</textare
 </div>
 <div id="nonPrint">      
      
-      <div id="toprow" class="morebuttons"><label id="openLabel" for="chooseFile" class="fileLabel">Open</label><input type='file' id="chooseFile" accept='.txt, text/plain'> <button id="savtxt" type="button">Save</button> <select id="numStrings" >
+      <div id="toprow" class="morebuttons"><label id="openLabel" for="chooseFile" class="fileLabel">Open</label><input type='file' id="chooseFile" accept='.txt, text/plain'> <select id="numStrings" >
         <option value="4 Bass">4&nbsp;&nbsp;Bass</option>
         <option value="4 Mandolin">4&nbsp;&nbsp;Mandolin</option>
         <option value="4 Ukulele">4&nbsp;&nbsp;Ukulele</option>
@@ -162,7 +162,7 @@ E||-------||--------------|-3-----0------|--------------|-0-----0-----|</textare
         <option value="7 Guitar">7&nbsp;&nbsp;Guitar</option>
         <option value="8 Guitar">8&nbsp;&nbsp;Guitar</option>
         <option value="9 Guitar">9&nbsp;&nbsp;Guitar</option>
-        <option value="12 Guitar">12&nbsp;&nbsp;Guitar</option></select><output id="out"></output> <button id="pitchbutton">&#xE274;&#xE271;</button> <input type="number" id="tempo" value="120"/></div> 
+        <option value="12 Guitar">12&nbsp;&nbsp;Guitar</option></select><output id="out"></output> <button id="pitchbutton">&#xE274;&#xE271; Tuning</button> <input type="number" id="tempo" value="120"/></div> 
   <div id="soundsel" class="morebuttons">      
 <select id="sfont">
     <option value="Offline">Offline</option>
@@ -292,6 +292,9 @@ E||-------||--------------|-3-----0------|--------------|-0-----0-----|</textare
 </table>
  </div>
   
+  <div id="saveoptions">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Save and share your tab<br>&nbsp;<button id="savFile">&#x00d9;</button> offline .html app and song ~2Mb<br>&nbsp;Save as <input id="filename" value=" title"><br>&nbsp;<button id="savtxt" type="button">Save</button> song as text file .txt  ~10kb<br><br>&nbsp;<button id="makelink">Link</button> get the song URL for bookmark<br>&nbsp;Create a <a id="tinylink" href="https://tinyurl.com/api-create.php?url=https://colortab.org/ColorTabApp.html?%2520e%7C%7C--3------%7C%250A%2520B%7C%7C---3-----%7C%250A%2520G%7C%7C----1----%7C%250A%2520D%7C%7C-----6---%7C%250A%2520A%7C%7C------6--%7C%250A%2520E%7C%7C-------6-%7C" target="_blank">TinyURL</a> online song link<br>
+    &nbsp;<button id="sharedone">Done</button><br> <br></div>
+  
 
 
     </div><!--non-print--> 
@@ -307,7 +310,8 @@ E||-------||--------------|-3-----0------|--------------|-0-----0-----|</textare
   </div><!--main content-->
   <div id="bottom">
     
-    <footer id="foot"><a href="http://colortab.org/" target="_blank" rel="noreferrer noopener">ColorTab.org</a>&nbsp;&nbsp;
+    <footer id="foot">
+      <a href="http://colortab.org/" target="_blank" rel="noreferrer noopener">ColorTab.org</a>&nbsp;&nbsp;
       <a href="http://colortab.org/musicxml/" target="_blank" rel="noreferrer noopener">Import MusicXML</a>
       <br>&copy; Copyright 2021, Keith Thomas<br>&#x00D0;ownstem &#x00D0;uration version 1.01</footer>
   </div>  

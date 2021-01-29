@@ -2437,7 +2437,48 @@ Spa ces and CaPiTals are ok
     noteSelect(ctNotePos[ctNotePos.length - 1],ctNotePos[ctNotePos.length - 1]);
   }
   
+  function makeLink(){
+    var split = [], cpy = [], text;
+    split = tabArea.value.split("\n");
+    for (var i = 0; i < tabStrings; i++) {
+      cpy[i] = startTab[i] + trimTail(split[i]);
+    }
+    text = cpy.join("\n");
+    location.search = text;
+  }
+  
+  function useLink(){
+    var q = location.search.slice(1);
+    if (q.length < 10) return;
+    tabArea.value = q.replace(/%25/g,"%");
+    pasteTab(decodeURI(q.replace(/%25/g,"%")));
+  }
+  
+  function shareDialog() {
+    var split = [], cpy = [], text;
+    split = tabArea.value.split("\n");
+    for (var i = 0; i < tabStrings; i++) {
+      cpy[i] = startTab[i] + trimTail(split[i]);
+    }
+    text = cpy.join("\n");
+    var theLink = new URL("https://colortab.org/ColorTabApp.html");
+    theLink.search = text;
+    theLink.search = theLink.search.replace(/%/g,"%25");
+
+    document.getElementById("tinylink").href = "https://tinyurl.com/api-create.php?url=" 
+    + theLink.href;
+    console.log(theLink.href)
+    document.getElementById("saveoptions").style.display = 'block';
+  }
+  
+  function shareDone() {
+    document.getElementById("saveoptions").style.display = 'none';
+  }  
+  
   function addEvents() {
+    document.getElementById("sharebutton").onclick = shareDialog;
+    document.getElementById("sharedone").onclick = shareDone;
+    document.getElementById("makelink").onclick = makeLink;    
     document.addEventListener("mouseup",docMouseUp);
     var debugbutton = document.getElementById("showdebugs");
     if (debugbutton) debugbutton.addEventListener("click", debugToggle);
@@ -3943,6 +3984,7 @@ permissionStatus.onchange = () => {
   }
   
   
+  
   window.onload = () => {
     ctx.suspend();// in case the browser doesn't do this
     playTimesDebug = document.getElementById("debugtimes");//*******temp
@@ -3974,6 +4016,8 @@ permissionStatus.onchange = () => {
     colorToggle();    
     lyricArea.value = lyricText;
     addEvents();
+    secsPerBeat = 60 / document.getElementById("tempo").value;
+    tempos[0] = [0,document.getElementById("tempo").value];    
     if (notEmpty()) {
       if (song) { //saved textareas found
         var lbtn = document.getElementById("loopbtn").className;
@@ -4017,8 +4061,9 @@ permissionStatus.onchange = () => {
       document.getElementById("menuTog").style.display = "none";
       document.getElementById("editButton").style.display = "block";
     }
-    secsPerBeat = 60 / document.getElementById("tempo").value;
-    tempos[0] = [0,document.getElementById("tempo").value];
+    else useLink();
+    //secsPerBeat = 60 / document.getElementById("tempo").value;
+    //tempos[0] = [0,document.getElementById("tempo").value];
     readPitches();
     playPrep();
   }
