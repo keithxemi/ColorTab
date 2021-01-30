@@ -2444,14 +2444,14 @@ Spa ces and CaPiTals are ok
       cpy[i] = startTab[i] + trimTail(split[i]);
     }
     text = cpy.join("\n");
-    location.search = text;
+    location.search = encodeCLink(text);
   }
   
   function useLink(){
-    var q = location.search.slice(1);
+    var q = decodeCLink(location.search.slice(1));
     if (q.length < 10) return;
-    tabArea.value = q.replace(/%25/g,"%");
-    pasteTab(decodeURI(q.replace(/%25/g,"%")));
+    tabArea.value = q;//.replace(/%25/g,"%");
+    pasteTab(q);//decodeURI(q.replace(/%25/g,"%")));
   }
   
   function shareDialog() {
@@ -2462,18 +2462,70 @@ Spa ces and CaPiTals are ok
     }
     text = cpy.join("\n");
     var theLink = new URL("https://colortab.org/ColorTabApp.html");
-    theLink.search = text;
-    theLink.search = theLink.search.replace(/%/g,"%25");
+    theLink.search =  encodeCLink(text);
+    //theLink.search = theLink.search.replace(/%/g,"%25");
 
     document.getElementById("tinylink").href = "https://tinyurl.com/api-create.php?url=" 
     + theLink.href;
-    console.log(theLink.href)
     document.getElementById("saveoptions").style.display = 'block';
   }
   
   function shareDone() {
     document.getElementById("saveoptions").style.display = 'none';
-  }  
+  }
+   
+  function encodeCLink(s) {
+    var codeUnits = new Uint16Array(s.length);
+    for (let i = 0; i < codeUnits.length; i++) {
+      codeUnits[i] = s.charCodeAt(i);
+    }
+    s = String.fromCharCode(...new Uint8Array(codeUnits.buffer));    
+    var dict = {},data = (s + "").split(""), out = [], currChar, phrase = data[0], code = 256;
+    for (var i = 1; i < data.length; i++) {
+      currChar = data[i];
+      if (dict[phrase + currChar] != null) phrase += currChar;
+      else {
+        out.push(phrase.length > 1 ? dict[phrase] : phrase.charCodeAt(0));
+        dict[phrase + currChar] = code;
+        code++;
+        phrase=currChar;
+      }
+    }
+    out.push(phrase.length > 1 ? dict[phrase] : phrase.charCodeAt(0));
+    for (i = 0; i < out.length; i++) {out[i] = String.fromCharCode(out[i]);}
+    var bin = out.join("");
+    codeUnits = new Uint16Array(bin.length);
+    for (let i = 0; i < codeUnits.length; i++) {
+      codeUnits[i] = bin.charCodeAt(i);
+    }
+    return btoa(String.fromCharCode(...new Uint8Array(codeUnits.buffer)));    
+  }
+
+  function decodeCLink(s) {
+    var bin = atob(s);
+    var bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bytes.length; i++) {
+      bytes[i] = bin.charCodeAt(i);
+    }
+    s = String.fromCharCode(...new Uint16Array(bytes.buffer));    
+    var dict = {}, data = (s + "").split(""), currChar = data[0], oldPhrase = currChar, out = [currChar], code = 256, phrase;
+    for (var i = 1; i < data.length; i++) {
+      var currCode = data[i].charCodeAt(0);
+      if (currCode < 256) phrase = data[i];
+      else phrase = dict[currCode] ? dict[currCode] : (oldPhrase + currChar);
+      out.push(phrase);
+      currChar = phrase.charAt(0);
+      dict[code] = oldPhrase + currChar;
+      code++;
+      oldPhrase = phrase;
+    }
+    bin = out.join("");
+    bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bytes.length; i++) {
+      bytes[i] = bin.charCodeAt(i);
+    }
+    return String.fromCharCode(...new Uint16Array(bytes.buffer));    
+  }
   
   function addEvents() {
     document.getElementById("sharebutton").onclick = shareDialog;
@@ -3315,7 +3367,6 @@ Spa ces and CaPiTals are ok
     var p = 0;
     var i,j,k;
     var unRolled = [];
-    console.log(textualRepeats)
 
     for (i = 0; i < rolledNotes.length;i++) {    
       if (repeats[p] && rolledNotes[i][4] > repeats[p][0]) {
