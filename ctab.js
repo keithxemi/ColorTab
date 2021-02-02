@@ -3,7 +3,10 @@
 /* global Soundfont, offline */
 
 (function() {
-  //global variables 
+  'use strict'
+  //global variables
+  var getTiny;//new Request
+  var saveName; //input element save dialog, defaults to song title
   var ctNotePos = [];//note positions
   var measureTimes = [];
   var measureFirsts = [];//positions of first note in each measure  
@@ -73,6 +76,8 @@
   var ctabOut; //document.getElementById("ctOut");
   var tabBack; //document.getElementById("TabBacker");
   var tuneBack; //document.getElementById("TuneBacker");
+  var clink; //document.getElementById("ctlink");
+  var makeButton;//document.getElementById("makeclink");  
   var lastBlur; //where was I? 
   var showHelp = false;
   var mainScroll = 0;
@@ -2437,36 +2442,36 @@ Spa ces and CaPiTals are ok
     noteSelect(ctNotePos[ctNotePos.length - 1],ctNotePos[ctNotePos.length - 1]);
   }
   
-  function makeLink(){
-    var split = [], cpy = [], text;
+  function collectTab(){
+    var split = [], cpy = [], tabv;
     split = tabArea.value.split("\n");
     for (var i = 0; i < tabStrings; i++) {
       cpy[i] = startTab[i] + trimTail(split[i]);
     }
-    text = cpy.join("\n");
-    location.search = encodeCLink(text);
+    tabv = cpy.join("\n");    
+    return tabv;
   }
   
   function useLink(){
     var q = decodeCLink(location.search.slice(1));
     if (q.length < 10) return;
-    tabArea.value = q;//.replace(/%25/g,"%");
-    pasteTab(q);//decodeURI(q.replace(/%25/g,"%")));
+    tabArea.value = "";
+    pasteTab(q);
   }
   
   function shareDialog() {
-    var split = [], cpy = [], text;
-    split = tabArea.value.split("\n");
-    for (var i = 0; i < tabStrings; i++) {
-      cpy[i] = startTab[i] + trimTail(split[i]);
-    }
-    text = cpy.join("\n");
+    clink.text = "";
+    makeButton.innerHTML = "Make CLink";
+    makeButton.disabled = false;
+    makeButton.style.color = '#ffffff';
+    document.getElementById("clinkdone").innerHTML = "";
+    document.getElementById("clinktext").innerHTML = "";    
+    var text = collectTab();
+    saveName = document.getElementById("filename");
+    saveName.value = document.getElementById("songTitle").innerHTML;
     var theLink = new URL("https://colortab.org/ColorTabApp.html");
     theLink.search =  encodeCLink(text);
-    //theLink.search = theLink.search.replace(/%/g,"%25");
-
-    document.getElementById("tinylink").href = "https://tinyurl.com/api-create.php?url=" 
-    + theLink.href;
+    getTiny = new Request('https://tinyurl.com/api-create.php?url=' + theLink.href);
     document.getElementById("saveoptions").style.display = 'block';
   }
   
@@ -2474,7 +2479,7 @@ Spa ces and CaPiTals are ok
     document.getElementById("saveoptions").style.display = 'none';
   }
    
-  function encodeCLink(s) {
+  function encodeCLink(s) {// btoa(toByte(LZWenc(toByte(s))))
     var codeUnits = new Uint16Array(s.length);
     for (let i = 0; i < codeUnits.length; i++) {
       codeUnits[i] = s.charCodeAt(i);
@@ -2501,7 +2506,7 @@ Spa ces and CaPiTals are ok
     return btoa(String.fromCharCode(...new Uint8Array(codeUnits.buffer)));    
   }
 
-  function decodeCLink(s) {
+  function decodeCLink(s) {//fromByte(LZWdec(fromByte(atob(s))))
     var bin = atob(s);
     var bytes = new Uint8Array(bin.length);
     for (let i = 0; i < bytes.length; i++) {
@@ -2524,13 +2529,41 @@ Spa ces and CaPiTals are ok
     for (let i = 0; i < bytes.length; i++) {
       bytes[i] = bin.charCodeAt(i);
     }
-    return String.fromCharCode(...new Uint16Array(bytes.buffer));    
+    return String.fromCharCode(...new Uint16Array(bytes.buffer));
   }
+   
+  function makeCLink(){
+    if (makeButton.innerHTML === "Copy CLink") {
+      copyLink();
+      return;
+    }
+    else {
+      makeButton.disabled = true;
+      makeButton.innerHTML = "please wait";
+      fetch(getTiny).then(response => response.text())
+        .then(tinylink => {
+        document.getElementById("clinktext").innerHTML = tinylink;
+        clink.text = "Open CLink to bookmark";
+        clink.href = tinylink;});
+        makeButton.innerHTML = "Copy CLink";
+        makeButton.disabled = false;
+        makeButton.style.color = '#00ff00';
+    }
+  }
+    
+  function copyLink() {
+    document.addEventListener('copy', function(e) {
+      e.clipboardData.setData('text/plain', clink.href);
+      e.preventDefault();
+    }, true);
+    document.execCommand('copy');
+    document.getElementById("clinkdone").innerHTML = "CLink is ready to paste" 
+  }  
   
   function addEvents() {
+    makeButton.onclick = makeCLink;
     document.getElementById("sharebutton").onclick = shareDialog;
-    document.getElementById("sharedone").onclick = shareDone;
-    document.getElementById("makelink").onclick = makeLink;    
+    document.getElementById("sharedone").onclick = shareDone;    
     document.addEventListener("mouseup",docMouseUp);
     var debugbutton = document.getElementById("showdebugs");
     if (debugbutton) debugbutton.addEventListener("click", debugToggle);
@@ -4056,6 +4089,8 @@ permissionStatus.onchange = () => {
     ctabOut = document.getElementById("ctOut");
     tabBack = document.getElementById("TabBacker");
     tuneBack = document.getElementById("TuneBacker");
+    clink = document.getElementById("ctlink");
+    makeButton = document.getElementById("makeclink");
     var song = document.getElementById("songSave");
     if (song) document.getElementById("songTitle").innerHTML = song.innerHTML;
     else document.getElementById("songTitle").innerHTML = "title"
@@ -4454,19 +4489,14 @@ permissionStatus.onchange = () => {
   function makeOffline(){
     songHtml = false;
     saveFile();
-  }
+  }  
   
   function saveTextFile() {
-    var split = [], cpy = [], text;
-    split = tabArea.value.split("\n");
-    for (var i = 0; i < tabStrings; i++) {
-      cpy[i] = startTab[i] + trimTail(split[i]);
-    }
-    text = cpy.join("\n");
+    var text = collectTab();
     var temp = document.createElement('a');
     temp.setAttribute('href', 'data:text;charset=utf-8,' +
       encodeURIComponent(text));
-    var fn = "CT_" + document.getElementById("songTitle").innerHTML; //filename
+    var fn = "CT_" + saveName.value; //filename
     temp.setAttribute('download', fn);
     temp.style.display = 'none';
     document.body.appendChild(temp);

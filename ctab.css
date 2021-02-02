@@ -994,10 +994,13 @@ textarea {
 	top: 5px;
   z-index: 1000;
 }
-  #sharebutton {
-    color: #0f0;
-    font-size: 20px;   
-  }
+#sharebutton {
+  color: #0f0;
+  font-size: 20px;   
+}
+  #ctlink {
+    color: #00f;
+  }  
 #helpcolorButton {
   font-family: 'Freebrat';
   font-size: 20px;
