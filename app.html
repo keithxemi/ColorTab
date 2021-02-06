@@ -1292,7 +1292,7 @@ E||-------||--------------|-3-----0------|--------------|-0-----0-----|</textare
       <li class="s6 liv">E||------|------|-----|----|----|--</li>
     </ul>
   <p></p>  
-  <p>Version 1.04 2/1/2021</p>
+  <p>Version 1.05 2/6/2021</p>
   </div><!--help text-->
     
       
@@ -1472,7 +1472,7 @@ E||-------||--------------|-3-----0------|--------------|-0-----0-----|</textare
     <footer id="foot">
       <a href="http://colortab.org/" target="_blank" rel="noreferrer noopener">ColorTab.org</a>&nbsp;&nbsp;
       <a href="https://colortab.org/ColorTabApp.html" target="_blank" rel="noreferrer noopener">APP</a> &nbsp;&nbsp;<a href="https://www.colortab.org/wp-content/uploads/scratch.htm" target="_blank" rel="noreferrer noopener">Scratch</a> &nbsp;<a href="http://colortab.org/musicxml/" target="_blank" rel="noreferrer noopener">XML</a>
-      <br>© Copyright 2021, Keith Thomas<br>Ðownstem Ðuration version 1.04</footer>
+      <br>© Copyright 2021, Keith Thomas<br>Ðownstem Ðuration version 1.05</footer>
   </div>  
 <script id="jScript">/*eslint-env es6, browser, amd*/
 /*eslint no-irregular-whitespace: ["error", { "skipRegExps": true }]*/
@@ -1481,6 +1481,12 @@ E||-------||--------------|-3-----0------|--------------|-0-----0-----|</textare
 (function() {
   'use strict'
   //global variables
+  var soundfont;// = new Soundfont(ctx);
+  var instChoice = "offline";
+  var sfChoice = "MusyngKite/";
+  var sfReady = true;
+  var soundFontInstrument;
+  var instrumentName; //user edited or default
   var getTiny;//new Request
   var saveName; //input element save dialog, defaults to song title
   var ctNotePos = [];//note positions
@@ -1543,6 +1549,8 @@ E||-------||--------------|-3-----0------|--------------|-0-----0-----|</textare
   var keyHandled = false; //true if keydown occurs
   var keysDown = 0; //prevent end of line wrap
   var songHtml = true; //saveFile mode
+  var playButton; //document.getElementById("play");
+  var tabTitle; //document.getElementById("songTitle")
   var tabArea; //document.getElementById("TabIn");
   var tabArea2; //document.getElementById("TabIn2");  
   var lyricArea; //document.getElementById("LyricIn");
@@ -2364,12 +2372,12 @@ Could not match this as tab:</p>`
     if (barCount !== 0) ctabOut.appendChild(document.createTextNode(barsHidden));
     for (note = noteStart; note < cTabLength; note++) {
       if (note === tabStrings) { //string notes
-        var inst = document.createElement("div");
-        inst.setAttribute("id", "instr");
-        inst.setAttribute("contenteditable", "true");
-        inst.setAttribute("spellcheck", "false");        
-        inst.innerHTML = prevInst;
-        ctabOut.appendChild(inst);
+        var instrumentNameEdit = document.createElement("div");
+        instrumentNameEdit.setAttribute("id", "instr");
+        instrumentNameEdit.setAttribute("contenteditable", "true");
+        instrumentNameEdit.setAttribute("spellcheck", "false");        
+        instrumentNameEdit.innerHTML = prevInst;
+        ctabOut.appendChild(instrumentNameEdit);
         ctabOut.appendChild(document.createElement("br"));
         ctabOut.appendChild(document.createTextNode("1"));
         featureLength[note] = 0; // not infinity for ||
@@ -2688,6 +2696,13 @@ Offline clipboard paste may work in Chrome.
     return t;
   }
   
+  function writePitches(p){
+    for (var i = 1;i<10;i++) {
+      ptable.rows[i].cells[2].textContent = p[i];
+    }
+    readPitches();
+  }
+  
 var tid;
 var nextStr = 10;
 
@@ -2887,7 +2902,7 @@ var nextStr = 10;
       lyricArea.value = "";
       barNumb.innerHTML = "";
       ctabOut.innerHTML = "";
-      document.getElementById("songTitle").innerHTML = "";
+      tabTitle.innerHTML = "";
       return;
     }
     //var scroll = lyricArea.scrollLeft;
@@ -2984,27 +2999,38 @@ var nextStr = 10;
     var file = e.dataTransfer.files[0];
     var reader = new FileReader();
     reader.onload = function(event) {
-      var text = event.target.result;
-      tabArea.value = text;
-      ctabOut.innerHTML = "";
-      append = false;
-      newLines = tabArea.value.replace(/(\r\n|\n|\r)/gm, "\n").split("\n");
-      undoing = false;
-      findTab();
-      document.getElementById("songTitle").innerHTML = file.name;
+      parseFile(event.target.result);
     };
     reader.readAsText(file);
     return false;
   }
   
-  function openFile() {   
-    readFile(this.files[0], function(e) {
-      var text = e.target.result;
-      locateTabCursor();      
+  function parseFile(unknown){
+      const preJson = '\n{"';
+      const postJson = "}\n\nLyrics:\n";
+      const postWhatever = ":\n\n";
+      //var unknown = e.target.result;
+      var empty = (lines.length < 1 || lines[0].length < 2) ? true : false;
+      var known = false;
+      if (unknown.includes(preJson) && unknown.includes(postJson)) known = true;
+      if  (known) {
+        var parseOk = true;
+        var text = unknown.split(preJson)[0];
+        var whatever = text.split(postWhatever)[0];
+        try {
+          var getJson = JSON.parse('{"' + unknown.split(preJson)[1].split(postJson)[0] + "}");
+        } catch (err) {
+          alert("Something went wrong with this file\n\n"  + err)
+          parseOk = false}
+        if (parseOk) useJson(getJson);
+        else text = unknown;//corrupt
+      }
+      else text = unknown;//not a CT_file
+      locateTabCursor();
       tabArea.value = text;
       prevLines = lines.slice();      
       newLines = tabArea.value.replace(/(\r\n|\n|\r)/gm, "\n").split("\n");
-      if (lines.length < 1 || lines[0].length < 2) { //empty
+      if (empty) {
         append = false;
         undoing = false;
         findTab();
@@ -3016,10 +3042,25 @@ var nextStr = 10;
         append = true;
         undoing = false;
         findTab();
-      }      
-      document.getElementById("songTitle").innerHTML = songFile.split(".txt")[0];
+      }
+      if (known) {
+        if (empty) lyricText = unknown.split(postJson)[1];
+        else lyricText += unknown.split(postJson)[1];//append
+        lyricArea.value = lyricText;
+        if (barFrom === "Tab") lyricBarsFromTab();
+        if (barFrom === "Lyr") tabBarsFromLyrics(lyricText);
+        tabTitle.innerHTML = whatever;
+      }
+      else {
+        songFile = this.files[0].name;
+        tabTitle.innerHTML = songFile.split(".txt")[0];
+      }    
+  }
+  
+  function openFile() {   
+    readFile(this.files[0], function(e) {
+      parseFile(e.target.result);
     });
-    songFile = this.files[0].name;
     document.getElementById("chooseFile").value = "";
   }
 
@@ -3459,7 +3500,7 @@ Spa ces and CaPiTals are ok
   }
 
   function changeStrings() {
-    if (notEmpty()) saveFile();
+    if (foundSavedLyrics()) saveFile();
     const numberOfStrings = document.getElementById("numStrings");
     instrument = numberOfStrings.value;
     startTab = newStrings(instrument);
@@ -3918,21 +3959,76 @@ Spa ces and CaPiTals are ok
     noteSelect(ctNotePos[ctNotePos.length - 1],ctNotePos[ctNotePos.length - 1]);
   }
   
-  function collectTab(){
-    var split = [], cpy = [], tabv;
+  function collectData(){
+    var split = [], cpy = [], tabString, whatString = tabTitle.innerHTML, appData = {}, lyricString;
+    var tempo = document.getElementById("tempo");
     split = tabArea.value.split("\n");
     for (var i = 0; i < tabStrings; i++) {
-      cpy[i] = startTab[i] + trimTail(split[i]);
+      cpy[i] = startTab[i] + trimTail(split[i] || "");
     }
-    tabv = cpy.join("\n");    
-    return tabv;
+    tabString = cpy.join("\n");
+    if (document.getElementById("instr")) instrumentName = document.getElementById("instr").innerHTML;
+    else instrumentName = document.getElementById("numStrings").value.slice(2);
+    appData.instrument = instrumentName;
+    appData.in = document.getElementById("numStrings").selectedIndex;
+    appData.tuning = tuneArea.value.split("\n");
+    appData.preset = document.getElementById("pretune").selectedIndex;
+    appData.tempo = tempo.value;
+    appData.capo = capoShift;
+    appData.pitches = pitchShift;
+    appData.metronome = metronome;
+    appData.playfrom = tabArea.selectionStart;
+    appData.sfsource = document.getElementById("sfont").selectedIndex;
+    appData.soundfont = document.getElementById("instrsf").selectedIndex;
+    appData.barmode = document.getElementById("barMode").selectedIndex;
+    appData.lspace = lyricLtrSpace;
+    appData.sects = keepSections;
+    appData.bars = keepMeasures;
+    appData.dash = keepSpaces;
+    appData.note = showNotes;
+    appData.color = showColors;
+    if (barFrom === "Tab") lyricString = lyricText.replace(/\|/g,"");
+    else lyricString = lyricText;
+    return [whatString,tabString,appData,lyricString];
+  }
+  
+  function useJson(j) {
+    var tempo = document.getElementById("tempo");
+    instrumentName = j.instrument;
+    document.getElementById("numStrings").selectedIndex = j.in;
+    changeStrings();
+    tuneArea.value = j.tuning.join("\n");
+    tabStrings = j.tuning.length;
+    tuneBlur();
+    document.getElementById("pretune").selectedIndex = j.preset;
+    tempo.value = j.tempo;
+    document.getElementById("capo").value = j.capo;
+    capoChange();
+    pitchShift = j.pitches;
+    writePitches(pitchShift);
+    metronome = !j.metronome;
+    metroToggle();
+    nP = j.playfrom;
+    noteSelect(nP,nP);
+    document.getElementById("sfont").selectedIndex = j.sfsource;
+    document.getElementById("instrsf").selectedIndex = j.soundfont;
+    changeSFfamily();
+    if (sfChoice != "") changeSFInstrument();
+    document.getElementById("barMode").selectedIndex = j.barmode;
+    lyricLtrSpace = j.lspace;
+    keepSections = !j.sects; partClick();
+    keepMeasures = !j.bars; barClick();
+    keepSpaces = !j.dash; dashClick();
+    showNotes = !j.note; noteToggle();
+    showColors = j.color -= 1; colorToggle();
   }
   
   function useLink(){
-    var q = decodeCLink(location.search.slice(1));
-    if (q.length < 10) return;
-    tabArea.value = "";
-    pasteTab(q);
+    var s = location.search.slice(1).split("=");
+    var d = decodeURIComponent(s[0]);
+    if (s[0].length < 2) return;
+    var q = decodeCLink(s[1]);
+    parseFile(q)
   }
   
   function shareDialog() {
@@ -3942,11 +4038,12 @@ Spa ces and CaPiTals are ok
     makeButton.style.color = '#ffffff';
     document.getElementById("clinkdone").innerHTML = "";
     document.getElementById("clinktext").innerHTML = "";    
-    var text = collectTab();
+    var data = collectData();
+    var text = data[0] + ":\n\n" + data[1] + "\n\n" + JSON.stringify(data[2]) + "\n\nLyrics:\n" +  data[3];
     saveName = document.getElementById("filename");
-    saveName.value = document.getElementById("songTitle").innerHTML;
+    saveName.value = tabTitle.innerHTML;
     var theLink = new URL("https://colortab.org/ColorTabApp.html");
-    theLink.search =  encodeCLink(text);
+    theLink.search = encodeURIComponent(data[0]) + "=" + encodeCLink(text);
     getTiny = new Request('https://tinyurl.com/api-create.php?url=' + theLink.href);
     document.getElementById("saveoptions").style.display = 'block';
   }
@@ -4104,7 +4201,7 @@ Spa ces and CaPiTals are ok
     document.getElementById("savtxt").onclick = saveTextFile;
     document.getElementById("numStrings").onchange = changeStrings;
     document.getElementById("barMode").onchange = barMaster;
-    document.getElementById("songTitle").onchange = noDownlink;
+    tabTitle.onchange = noDownlink;
     document.getElementById("kSpaces").onclick = dashClick;
     document.getElementById("kParts").onclick = partClick;
     document.getElementById("kMeasures").onclick = barClick;
@@ -4152,55 +4249,17 @@ Spa ces and CaPiTals are ok
     document.getElementById("msgdiv").onclick = noModal;
     document.getElementById("msgdiv").onkeypress = noModal;
     barNumb.onscroll = barNumbScroll;
-
-    var playButton = document.getElementById("play");
     var loopBtn = document.getElementById("loopbtn");
-    var soundfont = new Soundfont(ctx);
+    soundfont = new Soundfont(ctx);
     var soundfont2 = new Soundfont(ctx);    
-    var instName = document.getElementById("instrsf");
-    instName.setAttribute("disabled", true);
-    var instChoice = "offline";
-    var sfChoose = document.getElementById("sfont");
-    var sfChoice = "MusyngKite/";
-    var inst = soundfont.instrument(instChoice);
+    document.getElementById("instrsf").setAttribute("disabled", true);
+    soundFontInstrument = soundfont.instrument(instChoice);
     var metroInst = soundfont2.instrument("offline"); 
-    var sfReady = true;
     let playTimer;//poll doneYet during play
     var lookahead = 25.0;//ms until next lookahead
     var scheduleAheadTime = 0.1;//window of note to schedule in seconds
-    
-    instName.addEventListener("change", function(e) {
-      instChoice = e.target.value;
-      instChoice === "offline" ? sfChoice = "" : sfChoice = sfChoose.value;
-      playButton.setAttribute("disabled", true);
-      sfReady = false;
-      inst = soundfont.instrument(sfChoice + instChoice);
-      inst.onready(function() {
-        playButton.removeAttribute("disabled");
-        sfReady = true;
-      });
-    });
-    
-    sfChoose.addEventListener("change", function(e) {
-      sfChoice = e.target.value;
-      if (sfChoice === "Offline") {
-        sfChoice = "";     
-        instChoice = "offline";
-        instName.selectedIndex = 0;
-        instName.setAttribute("disabled", true);
-      }
-      else {
-        sfReady = false;
-        instChoice = instName.value;
-        instName.removeAttribute("disabled");
-      }
-      playButton.setAttribute("disabled", true);
-      inst = soundfont.instrument(sfChoice + instChoice);
-      inst.onready(function() {
-        playButton.removeAttribute("disabled");
-        sfReady = true;
-      });
-    });
+    document.getElementById("instrsf").addEventListener("change", changeSFInstrument);
+    document.getElementById("sfont").addEventListener("change", changeSFfamily);
     
     loopBtn.addEventListener('click', () => {
       if (loop) {
@@ -4219,10 +4278,10 @@ Spa ces and CaPiTals are ok
     function playSingle() {
       ctx.resume();
       if (singleThing.length === 2) {
-        inst.play(singleThing[0],ctx.currentTime,{ duration:0.5});
-        inst.play(singleThing[1],ctx.currentTime,{ duration:0.5});
+        soundFontInstrument.play(singleThing[0],ctx.currentTime,{ duration:0.5});
+        soundFontInstrument.play(singleThing[1],ctx.currentTime,{ duration:0.5});
       }
-      else inst.play(singleThing,ctx.currentTime,{ duration:0.5});
+      else soundFontInstrument.play(singleThing,ctx.currentTime,{ duration:0.5});
       setTimeout(waitDone,600);     
     }
     
@@ -4248,10 +4307,10 @@ Spa ces and CaPiTals are ok
           } else { 
             if (sfReady) {
               if (pitch.length === 2) {
-                  inst.play(pitch[0],nextNoteTime,{ duration:playThings[nP][2]});
-                  inst.play(pitch[1],nextNoteTime,{ duration:playThings[nP][2]});
+                  soundFontInstrument.play(pitch[0],nextNoteTime,{ duration:playThings[nP][2]});
+                  soundFontInstrument.play(pitch[1],nextNoteTime,{ duration:playThings[nP][2]});
                 }
-              else inst.play(pitch,nextNoteTime,{ duration:playThings[nP][2], gain:3});
+              else soundFontInstrument.play(pitch,nextNoteTime,{ duration:playThings[nP][2], gain:3});
             }
             else {//offline fallback
               if (pitch.length === 2) {
@@ -4269,7 +4328,6 @@ Spa ces and CaPiTals are ok
             if (noteClass.indexOf(" p") > -1) playClassIs.className = noteClass.replace(" p"," r");
             else if (noteClass.indexOf(" r") > -1) playClassIs.className = noteClass.replace(" r"," p");
             else playClassIs.className += " p";//highligh pos
-            
           }
         }
         if (playThings[nP][4]) {
@@ -4392,6 +4450,41 @@ Spa ces and CaPiTals are ok
 
   } //event listeners
   
+  function changeSFInstrument() {
+      var sfChoose = document.getElementById("sfont");
+      instChoice = document.getElementById("instrsf").value;
+      instChoice === "offline" ? sfChoice = "" : sfChoice = sfChoose.value;
+      playButton.setAttribute("disabled", true);
+      sfReady = false;
+      soundFontInstrument = soundfont.instrument(sfChoice + instChoice);
+      soundFontInstrument.onready(function() {
+        playButton.removeAttribute("disabled");
+        sfReady = true;
+      });
+    }
+  
+  function changeSFfamily() {
+      var instName = document.getElementById("instrsf");
+      sfChoice = document.getElementById("sfont").value;
+      if (sfChoice === "Offline") {
+        sfChoice = "";     
+        instChoice = "offline";
+        instName.selectedIndex = 0;
+        instName.setAttribute("disabled", true);
+      }
+      else {
+        sfReady = false;
+        instChoice = instName.value;
+        instName.removeAttribute("disabled");
+      }
+      playButton.setAttribute("disabled", true);
+      soundFontInstrument = soundfont.instrument(sfChoice + instChoice);
+      soundFontInstrument.onready(function() {
+        playButton.removeAttribute("disabled");
+        sfReady = true;
+      });
+    }  
+  
   function noteSelect(p1,p2){
     if (loop && p1 === p2) return;
     if (loop && p2 === p1 + 1) return;
@@ -4476,6 +4569,7 @@ Spa ces and CaPiTals are ok
     var mHot = false;//measure too long
     var mCool = false;//measure short
     var mBegin = false;//measure begins
+    if (!lyricText) lyricText = "";
     for (i = 0; i < lyricText.length; i++) {//for each char
       mBegin = false;
       if (lyricText[i] === "|" && lyricText[i + 1] !== "|") {
@@ -4516,7 +4610,7 @@ Spa ces and CaPiTals are ok
       lyricArea.scrollLeft = cpix - okrl; //scroll at 2/3 cw during play
   }
 
-  function playPrep() {//collect notes and times for playback
+  function playPrep() {//gather notes and times for playback
     var playNotes = [], playDurations = [], playWaits = [], playTimes = [],  playRings = [],ctNoteIds = [], m = -1;    
     var i, k = -1, n, s, first = false, quarter = false, rest = false, triplet = 0, tied = false, dots = 0, ddots = 0, stringSum, chordSum = 0, newNotes = 0, strNotes, strPos, down = false, mbeats = 4, measureNotes = [], noteMeasureNums = [];
     var defaultWait = 1;
@@ -4993,7 +5087,7 @@ Spa ces and CaPiTals are ok
     cT.forEach((c,i) => {
       if (/[\uE040-\uE042]/.test(cT[i][Chr])) {repeatBars.push(i);}});//any |: :| or :|:
     
-    repeatBars.forEach((b,i) => {pairs.push([b, repeatBars[i + 1]]);});//collect every possible pair
+    repeatBars.forEach((b,i) => {pairs.push([b, repeatBars[i + 1]]);});//every possible pair
     
     if (pairs[0] && pairs[0][1] && pairs[0][0] === 0 &&
       /[\uE041\uE042]/.test(cT[pairs[0][1]][Chr])) goodPairs.push(pairs[0]);//use default begin for first pair  
@@ -5548,6 +5642,7 @@ permissionStatus.onchange = () => {
   window.onload = () => {
     ctx.suspend();// in case the browser doesn't do this
     playTimesDebug = document.getElementById("debugtimes");//*******temp
+    playButton = document.getElementById("play");
     ptable = document.getElementById("pitchtbl");
     var finp = document.getElementById('fileinput');
     if (finp) finp.addEventListener('change', readJS, false);
@@ -5555,6 +5650,7 @@ permissionStatus.onchange = () => {
     if (finp2) finp2.addEventListener('change', readJS2, false); 
     var mk = document.getElementById('make');
     if (mk) mk.addEventListener('click', makeOffline, false);
+    tabTitle = document.getElementById("songTitle");
     tabArea = document.getElementById("TabIn");
     tabArea.focus();
     tabArea2 = document.getElementById("TabIn2");    
@@ -5568,8 +5664,8 @@ permissionStatus.onchange = () => {
     clink = document.getElementById("ctlink");
     makeButton = document.getElementById("makeclink");
     var song = document.getElementById("songSave");
-    if (song) document.getElementById("songTitle").innerHTML = song.innerHTML;
-    else document.getElementById("songTitle").innerHTML = "title"
+    if (song) tabTitle.innerHTML = song.innerHTML;
+    else tabTitle.innerHTML = "title"
     tuneArea.value = stringNames();
     tuneArea2.value = stringNames();    
     tabArea.value = "";
@@ -5579,8 +5675,9 @@ permissionStatus.onchange = () => {
     lyricArea.value = lyricText;
     addEvents();
     secsPerBeat = 60 / document.getElementById("tempo").value;
-    tempos[0] = [0,document.getElementById("tempo").value];    
-    if (notEmpty()) {
+    tempos[0] = [0,document.getElementById("tempo").value];
+    instrumentName = document.getElementById("numStrings").value.slice(2);//default
+    if (foundSavedLyrics()) {
       if (song) { //saved textareas found
         var lbtn = document.getElementById("loopbtn").className;
         lbtn.includes("off") ? loop = true : loop = false;
@@ -5613,7 +5710,7 @@ permissionStatus.onchange = () => {
         lyricText = lyr.value;
         lyricBarsFromTab();
         document.getElementById("LyricIn").value = lyr.value;
-        document.getElementById("songTitle").innerHTML = song.innerHTML;
+        tabTitle.innerHTML = song.innerHTML;
       }
       showButtons = true; menuToggle();
       barFrom = "Tab";
@@ -5630,7 +5727,7 @@ permissionStatus.onchange = () => {
     playPrep();
   }
   
-  function notEmpty(){   
+  function foundSavedLyrics(){   
     var empty = document.getElementById("lyricSave");
     var yes = (empty && empty.value.length > 0) ? true : false;
     return yes;
@@ -5968,11 +6065,12 @@ permissionStatus.onchange = () => {
   }  
   
   function saveTextFile() {
-    var text = collectTab();
+    var data = collectData();//[whatString,tabString,appData,lyricString]
+    var text = data[0] + ":\n\n" + data[1] + "\n\n" + JSON.stringify(data[2]) + "\n\nLyrics:\n" +  data[3];
     var temp = document.createElement('a');
     temp.setAttribute('href', 'data:text;charset=utf-8,' +
       encodeURIComponent(text));
-    var fn = "CT_" + saveName.value; //filename
+    var fn = "CT_" + saveName.value.split(" ")[0]; //filename
     temp.setAttribute('download', fn);
     temp.style.display = 'none';
     document.body.appendChild(temp);
@@ -6038,7 +6136,7 @@ permissionStatus.onchange = () => {
     var instTxt = "Guitar";
     if (document.getElementById("instr"))
       instTxt = document.getElementById("instr").innerHTML;
-    var fn = document.getElementById("songTitle").innerHTML; //filename    
+    var fn = tabTitle.innerHTML; //filename    
     var song = "<div id='songSave' style='display:none'>" + fn + "</div>";
     var lett = "<div id='ltrSave' style='display:none'>" + lyricLtrSpace + "</div>";
     var inst = "<div id='instSave' style='display:none'>" + instTxt + "</div>";
@@ -6118,7 +6216,7 @@ E|---|-Am------------|-3----0-----|Am-----------|-0-0----|-Am-
     append = false;
     ctabOut.innerHTML = "";
     findTab();
-    document.getElementById("songTitle").innerHTML = "Greensleeves";
+    tabTitle.innerHTML = "Greensleeves";
   }
   
 }());
