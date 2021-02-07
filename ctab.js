@@ -1541,6 +1541,7 @@ var nextStr = 10;
         var parseOk = true;
         var text = unknown.split(preJson)[0];
         var whatever = text.split(postWhatever)[0];
+        document.title = whatever;
         try {
           var getJson = JSON.parse('{"' + unknown.split(preJson)[1].split(postJson)[0] + "}");
         } catch (err) {
@@ -2517,7 +2518,6 @@ Spa ces and CaPiTals are ok
   }
   
   function useJson(j) {
-    var tempo = document.getElementById("tempo");
     instrumentName = j.instrument;
     document.getElementById("numStrings").selectedIndex = j.in;
     changeStrings();
@@ -2525,7 +2525,9 @@ Spa ces and CaPiTals are ok
     tabStrings = j.tuning.length;
     tuneBlur();
     document.getElementById("pretune").selectedIndex = j.preset;
-    tempo.value = j.tempo;
+    document.getElementById("tempo").value = j.tempo;
+    tempos[0] = [0,document.getElementById("tempo").value];
+    secsPerBeat = 60 / document.getElementById("tempo").value;
     document.getElementById("capo").value = j.capo;
     capoChange();
     pitchShift = j.pitches;

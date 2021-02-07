@@ -1292,7 +1292,7 @@ E||-------||--------------|-3-----0------|--------------|-0-----0-----|</textare
       <li class="s6 liv">E||------|------|-----|----|----|--</li>
     </ul>
   <p></p>  
-  <p>Version 1.05 2/6/2021</p>
+  <p>Version 1.06 2/7/2021</p>
   </div><!--help text-->
     
       
@@ -1472,7 +1472,7 @@ E||-------||--------------|-3-----0------|--------------|-0-----0-----|</textare
     <footer id="foot">
       <a href="http://colortab.org/" target="_blank" rel="noreferrer noopener">ColorTab.org</a>&nbsp;&nbsp;
       <a href="https://colortab.org/ColorTabApp.html" target="_blank" rel="noreferrer noopener">APP</a> &nbsp;&nbsp;<a href="https://www.colortab.org/wp-content/uploads/scratch.htm" target="_blank" rel="noreferrer noopener">Scratch</a> &nbsp;<a href="http://colortab.org/musicxml/" target="_blank" rel="noreferrer noopener">XML</a>
-      <br>© Copyright 2021, Keith Thomas<br>Ðownstem Ðuration version 1.05</footer>
+      <br>© Copyright 2021, Keith Thomas<br>Ðownstem Ðuration version 1.06</footer>
   </div>  
 <script id="jScript">/*eslint-env es6, browser, amd*/
 /*eslint no-irregular-whitespace: ["error", { "skipRegExps": true }]*/
@@ -3017,6 +3017,7 @@ var nextStr = 10;
         var parseOk = true;
         var text = unknown.split(preJson)[0];
         var whatever = text.split(postWhatever)[0];
+        document.title = whatever;
         try {
           var getJson = JSON.parse('{"' + unknown.split(preJson)[1].split(postJson)[0] + "}");
         } catch (err) {
@@ -3993,7 +3994,6 @@ Spa ces and CaPiTals are ok
   }
   
   function useJson(j) {
-    var tempo = document.getElementById("tempo");
     instrumentName = j.instrument;
     document.getElementById("numStrings").selectedIndex = j.in;
     changeStrings();
@@ -4001,7 +4001,9 @@ Spa ces and CaPiTals are ok
     tabStrings = j.tuning.length;
     tuneBlur();
     document.getElementById("pretune").selectedIndex = j.preset;
-    tempo.value = j.tempo;
+    document.getElementById("tempo").value = j.tempo;
+    tempos[0] = [0,document.getElementById("tempo").value];
+    secsPerBeat = 60 / document.getElementById("tempo").value;
     document.getElementById("capo").value = j.capo;
     capoChange();
     pitchShift = j.pitches;
