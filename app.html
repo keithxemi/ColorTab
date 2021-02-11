@@ -379,6 +379,7 @@ body {
 	font-family: 'CrimsonText';  
   font-size: 18px;
   padding: 4px 5px 2px;
+  border-color:blue;
 }
 #bigger {
   font-size: 20px; 
@@ -1292,7 +1293,7 @@ E||-------||--------------|-3-----0------|--------------|-0-----0-----|</textare
       <li class="s6 liv">E||------|------|-----|----|----|--</li>
     </ul>
   <p></p>  
-  <p>Version 1.06 2/7/2021</p>
+  <p>Version 1.07 2/11/2021</p>
   </div><!--help text-->
     
       
@@ -1374,7 +1375,7 @@ E||-------||--------------|-3-----0------|--------------|-0-----0-----|</textare
   <div class="overtune tstripe" id="u9" style="display: none;"></div>  
   <textarea id="TuneIn" draggable="false" spellcheck="false" rows="6" style="color: white;"></textarea>
   <textarea id="TuneIn2" draggable="false" spellcheck="false" rows="6" style="display: block;"></textarea>  
-  <div id="TabBacker" style="background: rgb(232, 232, 232) none repeat scroll 0% 0%;"></div>
+  <div id="TabBacker" style="background: rgb(232, 232, 232) none repeat scroll 0% 0%; color: black;"></div>
   <div class="overlay stripe" id="t1" style="display: block; background-color: rgb(255, 255, 255);"></div>
   <div class="overlay stripe" id="t2" style="display: block; background-color: rgb(255, 220, 0);"></div>
   <div class="overlay stripe" id="t3" style="display: block; background-color: rgb(60, 200, 244);"></div>
@@ -1472,7 +1473,7 @@ E||-------||--------------|-3-----0------|--------------|-0-----0-----|</textare
     <footer id="foot">
       <a href="http://colortab.org/" target="_blank" rel="noreferrer noopener">ColorTab.org</a>&nbsp;&nbsp;
       <a href="https://colortab.org/ColorTabApp.html" target="_blank" rel="noreferrer noopener">APP</a> &nbsp;&nbsp;<a href="https://www.colortab.org/wp-content/uploads/scratch.htm" target="_blank" rel="noreferrer noopener">Scratch</a> &nbsp;<a href="http://colortab.org/musicxml/" target="_blank" rel="noreferrer noopener">XML</a>
-      <br>© Copyright 2021, Keith Thomas<br>Ðownstem Ðuration version 1.06</footer>
+      <br>© Copyright 2021, Keith Thomas<br>Ðownstem Ðuration version 1.07</footer>
   </div>  
 <script id="jScript">/*eslint-env es6, browser, amd*/
 /*eslint no-irregular-whitespace: ["error", { "skipRegExps": true }]*/
@@ -1481,6 +1482,7 @@ E||-------||--------------|-3-----0------|--------------|-0-----0-----|</textare
 (function() {
   'use strict'
   //global variables
+  var editInstr;
   var soundfont;// = new Soundfont(ctx);
   var instChoice = "offline";
   var sfChoice = "MusyngKite/";
@@ -3021,8 +3023,8 @@ var nextStr = 10;
         try {
           var getJson = JSON.parse('{"' + unknown.split(preJson)[1].split(postJson)[0] + "}");
         } catch (err) {
-          alert("Something went wrong with this file\n\n"  + err)
-          parseOk = false}
+          alert("Something went wrong with this file\n\n"  + err);
+          parseOk = false;}
         if (parseOk) useJson(getJson);
         else text = unknown;//corrupt
       }
@@ -3501,7 +3503,7 @@ Spa ces and CaPiTals are ok
   }
 
   function changeStrings() {
-    if (foundSavedLyrics()) saveFile();
+    if (foundSavedLyrics()) saveTextFile();
     const numberOfStrings = document.getElementById("numStrings");
     instrument = numberOfStrings.value;
     startTab = newStrings(instrument);
@@ -4026,11 +4028,27 @@ Spa ces and CaPiTals are ok
   }
   
   function useLink(){
+    var linkOk = true;
     var s = location.search.slice(1).split("=");
-    var d = decodeURIComponent(s[0]);
+    var params = (new URL(window.location)).searchParams;    
+    if (s[0] === "clink") {
+      var clink = decodeURIComponent(params.get('clink'));
+      var soup = params.get('soup').replace(/ /g, "+");
+    }
+    else {
+      clink = decodeURIComponent(s[0]);
+      soup = "";
+      if (s[1]) soup = s[1].split("&")[0];
+    }
     if (s[0].length < 2) return;
-    var q = decodeCLink(s[1]);
-    parseFile(q)
+    var q = "";
+    try {
+      q = decodeCLink(soup);
+    } catch (e){
+      alert(clink + "\n\nsomething went wrong, the link is broken.\n\n" + e);
+      linkOk = false;
+    }
+    if (linkOk) parseFile(q);
   }
   
   function shareDialog() {
@@ -4045,7 +4063,8 @@ Spa ces and CaPiTals are ok
     saveName = document.getElementById("filename");
     saveName.value = tabTitle.innerHTML;
     var theLink = new URL("https://colortab.org/ColorTabApp.html");
-    theLink.search = encodeURIComponent(data[0]) + "=" + encodeCLink(text);
+    theLink.search = "clink=" + encodeURIComponent(data[0]) + "&soup=" + encodeCLink(text);
+    console.log(encodeCLink(text))
     getTiny = new Request('https://tinyurl.com/api-create.php?url=' + theLink.href);
     document.getElementById("saveoptions").style.display = 'block';
   }
@@ -5642,6 +5661,7 @@ permissionStatus.onchange = () => {
   
   
   window.onload = () => {
+    console.log(atob("E+AXQB+A"),atob("E AXQB A"))
     ctx.suspend();// in case the browser doesn't do this
     playTimesDebug = document.getElementById("debugtimes");//*******temp
     playButton = document.getElementById("play");

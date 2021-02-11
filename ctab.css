@@ -359,6 +359,7 @@ body {
 	font-family: 'CrimsonText';  
   font-size: 18px;
   padding: 4px 5px 2px;
+  border-color:blue;
 }
 #bigger {
   font-size: 20px; 

@@ -5,6 +5,7 @@
 (function() {
   'use strict'
   //global variables
+  var editInstr;
   var soundfont;// = new Soundfont(ctx);
   var instChoice = "offline";
   var sfChoice = "MusyngKite/";
@@ -1545,8 +1546,8 @@ var nextStr = 10;
         try {
           var getJson = JSON.parse('{"' + unknown.split(preJson)[1].split(postJson)[0] + "}");
         } catch (err) {
-          alert("Something went wrong with this file\n\n"  + err)
-          parseOk = false}
+          alert("Something went wrong with this file\n\n"  + err);
+          parseOk = false;}
         if (parseOk) useJson(getJson);
         else text = unknown;//corrupt
       }
@@ -2025,7 +2026,7 @@ Spa ces and CaPiTals are ok
   }
 
   function changeStrings() {
-    if (foundSavedLyrics()) saveFile();
+    if (foundSavedLyrics()) saveTextFile();
     const numberOfStrings = document.getElementById("numStrings");
     instrument = numberOfStrings.value;
     startTab = newStrings(instrument);
@@ -2550,11 +2551,27 @@ Spa ces and CaPiTals are ok
   }
   
   function useLink(){
+    var linkOk = true;
     var s = location.search.slice(1).split("=");
-    var d = decodeURIComponent(s[0]);
+    var params = (new URL(window.location)).searchParams;    
+    if (s[0] === "clink") {
+      var clink = decodeURIComponent(params.get('clink'));
+      var soup = params.get('soup').replace(/ /g, "+");
+    }
+    else {
+      clink = decodeURIComponent(s[0]);
+      soup = "";
+      if (s[1]) soup = s[1].split("&")[0];
+    }
     if (s[0].length < 2) return;
-    var q = decodeCLink(s[1]);
-    parseFile(q)
+    var q = "";
+    try {
+      q = decodeCLink(soup);
+    } catch (e){
+      alert(clink + "\n\nsomething went wrong, the link is broken.\n\n" + e);
+      linkOk = false;
+    }
+    if (linkOk) parseFile(q);
   }
   
   function shareDialog() {
@@ -2569,7 +2586,8 @@ Spa ces and CaPiTals are ok
     saveName = document.getElementById("filename");
     saveName.value = tabTitle.innerHTML;
     var theLink = new URL("https://colortab.org/ColorTabApp.html");
-    theLink.search = encodeURIComponent(data[0]) + "=" + encodeCLink(text);
+    theLink.search = "clink=" + encodeURIComponent(data[0]) + "&soup=" + encodeCLink(text);
+    console.log(encodeCLink(text))
     getTiny = new Request('https://tinyurl.com/api-create.php?url=' + theLink.href);
     document.getElementById("saveoptions").style.display = 'block';
   }
@@ -4166,6 +4184,7 @@ permissionStatus.onchange = () => {
   
   
   window.onload = () => {
+    console.log(atob("E+AXQB+A"),atob("E AXQB A"))
     ctx.suspend();// in case the browser doesn't do this
     playTimesDebug = document.getElementById("debugtimes");//*******temp
     playButton = document.getElementById("play");
