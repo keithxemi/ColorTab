@@ -2489,7 +2489,9 @@ Spa ces and CaPiTals are ok
     var split = [], cpy = [], tabString, whatString = tabTitle.innerHTML, appData = {}, lyricString;
     var tempo = document.getElementById("tempo");
     split = tabArea.value.split("\n");
+    if (split[0][0] === "|") var sectStart = true; //don't save first bar line, add back on open
     for (var i = 0; i < tabStrings; i++) {
+      if (sectStart) split[i] = split[i].slice(1);
       cpy[i] = startTab[i] + trimTail(split[i] || "");
     }
     tabString = cpy.join("\n");
@@ -2504,6 +2506,7 @@ Spa ces and CaPiTals are ok
     appData.pitches = pitchShift;
     appData.metronome = metronome;
     appData.playfrom = tabArea.selectionStart;
+    if (!sectStart) appData.playfrom += 1;//adjust if bar line removed
     appData.sfsource = document.getElementById("sfont").selectedIndex;
     appData.soundfont = document.getElementById("instrsf").selectedIndex;
     appData.barmode = document.getElementById("barMode").selectedIndex;
@@ -2587,7 +2590,6 @@ Spa ces and CaPiTals are ok
     saveName.value = tabTitle.innerHTML;
     var theLink = new URL("https://colortab.org/ColorTabApp.html");
     theLink.search = "clink=" + encodeURIComponent(data[0]) + "&soup=" + encodeCLink(text);
-    console.log(encodeCLink(text))
     getTiny = new Request('https://tinyurl.com/api-create.php?url=' + theLink.href);
     document.getElementById("saveoptions").style.display = 'block';
   }
@@ -2678,6 +2680,10 @@ Spa ces and CaPiTals are ok
   }  
   
   function addEvents() {
+    window.addEventListener('beforeunload', function (e) {
+      e.preventDefault();
+      e.returnValue = '';
+    });    
     makeButton.onclick = makeCLink;
     document.getElementById("sharebutton").onclick = shareDialog;
     document.getElementById("sharedone").onclick = shareDone;    
@@ -4184,7 +4190,6 @@ permissionStatus.onchange = () => {
   
   
   window.onload = () => {
-    console.log(atob("E+AXQB+A"),atob("E AXQB A"))
     ctx.suspend();// in case the browser doesn't do this
     playTimesDebug = document.getElementById("debugtimes");//*******temp
     playButton = document.getElementById("play");
@@ -4207,7 +4212,7 @@ permissionStatus.onchange = () => {
     tabBack = document.getElementById("TabBacker");
     tuneBack = document.getElementById("TuneBacker");
     clink = document.getElementById("ctlink");
-    makeButton = document.getElementById("makeclink");
+    makeButton = document.getElementById("makeclink");    
     var song = document.getElementById("songSave");
     if (song) tabTitle.innerHTML = song.innerHTML;
     else tabTitle.innerHTML = "title"
