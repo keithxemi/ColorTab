@@ -1051,6 +1051,7 @@ Could not match this as tab:</p>`
     setSelStart = cutCursor;
     setSelEnd = setSelStart;
     tabArea.setSelectionRange(setSelStart, setSelEnd);
+    playCursor(setSelStart,setSelStart);
     tabArea.focus();
     if (navigator.clipboard)
       navigator.clipboard.writeText("\n" + clipCut.join("\n") + "\n" + "  " + lyrCut + "\n");
@@ -2681,6 +2682,7 @@ Spa ces and CaPiTals are ok
   
   function addEvents() {
     window.addEventListener('beforeunload', function (e) {
+      if (undoCount < 2) return;
       e.preventDefault();
       e.returnValue = '';
     });    
@@ -2819,7 +2821,7 @@ Spa ces and CaPiTals are ok
       }
       else {
         loop = true;
-        loopBtn.setAttribute("class", "transport off");       
+        loopBtn.setAttribute("class", "transport off");
       }
     });
     
@@ -3453,7 +3455,7 @@ Spa ces and CaPiTals are ok
       rolledSums[noteMeasureNums[i]] += playWaits[i];
     };//playprep
     playThings = [];
-    playThings = unRoll(prepNotes);    
+    playThings = unRoll(prepNotes);
       //use actual sums, not number from time sig
       var avg = measureTimes[0] / measureSums[0];//use average quarter note timing
       var wait = 0;
@@ -3631,6 +3633,7 @@ Spa ces and CaPiTals are ok
   }
   
   function pairRepeats() {
+    if (loop) return [];
     var repeatBars = []; repeatBars[0] = 0;//default |: at beginning
     var pairs = [], goodPairs = [], pairPositions = [], repCount;
     
@@ -4186,9 +4189,7 @@ permissionStatus.onchange = () => {
     noteSelect(cursorPos,cursorPos);
     oType = false;
   }
-  
-  
-  
+    
   window.onload = () => {
     ctx.suspend();// in case the browser doesn't do this
     playTimesDebug = document.getElementById("debugtimes");//*******temp
@@ -4271,8 +4272,6 @@ permissionStatus.onchange = () => {
       document.getElementById("editButton").style.display = "block";
     }
     else useLink();
-    //secsPerBeat = 60 / document.getElementById("tempo").value;
-    //tempos[0] = [0,document.getElementById("tempo").value];
     readPitches();
     playPrep();
   }
@@ -4620,7 +4619,7 @@ permissionStatus.onchange = () => {
     var temp = document.createElement('a');
     temp.setAttribute('href', 'data:text;charset=utf-8,' +
       encodeURIComponent(text));
-    var fn = "CT_" + saveName.value.split(" ")[0]; //filename
+    var fn = "CT_" + saveName.value.split(" ")[0] + ".txt"; //filename
     temp.setAttribute('download', fn);
     temp.style.display = 'none';
     document.body.appendChild(temp);
@@ -4686,7 +4685,7 @@ permissionStatus.onchange = () => {
     var instTxt = "Guitar";
     if (document.getElementById("instr"))
       instTxt = document.getElementById("instr").innerHTML;
-    var fn = tabTitle.innerHTML; //filename    
+    var fn = tabTitle.innerHTML + ".html"; //filename    
     var song = "<div id='songSave' style='display:none'>" + fn + "</div>";
     var lett = "<div id='ltrSave' style='display:none'>" + lyricLtrSpace + "</div>";
     var inst = "<div id='instSave' style='display:none'>" + instTxt + "</div>";
