@@ -892,7 +892,7 @@ Could not match this as tab:</p>`
     notecount = 0;
     var ctWidth = parseFloat(window.getComputedStyle(ctabOut).getPropertyValue("width"));
     var prevInst = " " + instrument.slice(2);
-    if (document.getElementById("instr")) prevInst = document.getElementById("instr").innerHTML;
+    if (editInstr) prevInst = editInstr;
     ctabOut.innerHTML = "";
     if (barCount !== 0) ctabOut.appendChild(document.createTextNode(barsHidden));
     for (note = noteStart; note < cTabLength; note++) {
@@ -903,6 +903,7 @@ Could not match this as tab:</p>`
         instrumentNameEdit.setAttribute("spellcheck", "false");        
         instrumentNameEdit.innerHTML = prevInst;
         ctabOut.appendChild(instrumentNameEdit);
+        instrumentNameEdit.onblur = newInstName;        
         ctabOut.appendChild(document.createElement("br"));
         ctabOut.appendChild(document.createTextNode("1"));
         featureLength[note] = 0; // not infinity for ||
@@ -978,6 +979,10 @@ Could not match this as tab:</p>`
     if (document.getElementById("instr")) 
       document.getElementById("instr").style.display = "inline";
   }
+  
+  function newInstName(){
+    editInstr = document.getElementById("instr").innerHTML;
+  }  
   
   function clearCtSel() {//clear highlight classes
     var p;
@@ -2215,7 +2220,8 @@ Spa ces and CaPiTals are ok
   
   function barMouseUp() {
     var sel = window.getSelection();
-    var r = sel.getRangeAt(0);   
+    var r = sel.getRangeAt(0);
+    tabArea.setSelectionRange(r.startOffset, r.endOffset);
     noteSelect(r.startOffset, r.endOffset);
     lyricArea.scrollLeft = barNumb.scrollLeft;
     window.getSelection().collapse(null);
@@ -2496,7 +2502,7 @@ Spa ces and CaPiTals are ok
       cpy[i] = startTab[i] + trimTail(split[i] || "");
     }
     tabString = cpy.join("\n");
-    if (document.getElementById("instr")) instrumentName = document.getElementById("instr").innerHTML;
+    if (editInstr) instrumentName = editInstr;
     else instrumentName = document.getElementById("numStrings").value.slice(2);
     appData.instrument = instrumentName;
     appData.in = document.getElementById("numStrings").selectedIndex;
@@ -2524,6 +2530,7 @@ Spa ces and CaPiTals are ok
   
   function useJson(j) {
     instrumentName = j.instrument;
+    editInstr = instrumentName;
     document.getElementById("numStrings").selectedIndex = j.in;
     changeStrings();
     tuneArea.value = j.tuning.join("\n");
@@ -2817,11 +2824,14 @@ Spa ces and CaPiTals are ok
       if (loop) {
         loop = false;
         loopBtn.setAttribute("class", "transport black");
-        noteSelect(selStart,selStart);
+        playPrep();
+        noteSelect(selStart,selStart);        
       }
-      else {
+      else {       
         loop = true;
+        playPrep();//disable repeat unroll
         loopBtn.setAttribute("class", "transport off");
+        tabMouseUp();
       }
     });
     
@@ -3038,8 +3048,17 @@ Spa ces and CaPiTals are ok
     }  
   
   function noteSelect(p1,p2){
-    if (loop && p1 === p2) return;
-    if (loop && p2 === p1 + 1) return;
+    if (p2 === p1 + 1) p2 = p1;    
+    if (loop && !paused && p1 === p2) return;
+    if (paused && p1 === p2){
+      loop = false;
+      document.getElementById("loopbtn").setAttribute("class", "transport black");
+    }
+    if (paused && p1 != p2) {
+      loop = true;
+      document.getElementById("loopbtn").setAttribute("class", "transport off");
+      playPrep();
+    }
     selStart = p1;
     selEnd = p2;
     var p;
@@ -3517,7 +3536,8 @@ Spa ces and CaPiTals are ok
   
   function unRoll(rolledNotes) {
     //playThings [0 pitch, 1 time, 2 duration, 3 id, 4 tab pos, 5 waits, 6 measure]
-    var repeats = measureRepeats().concat(pairRepeats());//***********handle nested begining repeat
+    var repeats = [];
+    if (!loop) repeats = measureRepeats().concat(pairRepeats());//***********handle nested begining repeat
     var textualRepeats = jumpRepeats();
     var p = 0;
     var i,j,k;
@@ -3633,7 +3653,6 @@ Spa ces and CaPiTals are ok
   }
   
   function pairRepeats() {
-    if (loop) return [];
     var repeatBars = []; repeatBars[0] = 0;//default |: at beginning
     var pairs = [], goodPairs = [], pairPositions = [], repCount;
     
@@ -3769,7 +3788,9 @@ Spa ces and CaPiTals are ok
     if (b) d = ctIdPos[b];
     if (c && d) {
       if (c === d )noteSelect(c,d);
-      else noteSelect(c, d + 1);
+      else {
+        tabArea.setSelectionRange(c,d + 1);
+        noteSelect(c, d + 1);}
     }
     window.getSelection().collapse(null); //clear previous to prevent drag 
   } 
@@ -4686,7 +4707,7 @@ permissionStatus.onchange = () => {
     if (document.getElementById("instr"))
       instTxt = document.getElementById("instr").innerHTML;
     var fn = tabTitle.innerHTML + ".html"; //filename    
-    var song = "<div id='songSave' style='display:none'>" + fn + "</div>";
+    var song = "<div id='songSave' style='display:none'>" + tabTitle.innerHTML + "</div>";
     var lett = "<div id='ltrSave' style='display:none'>" + lyricLtrSpace + "</div>";
     var inst = "<div id='instSave' style='display:none'>" + instTxt + "</div>";
     
@@ -4699,7 +4720,7 @@ permissionStatus.onchange = () => {
     var bh = `
 </body>
 </html>`;
-    document.title = fn;
+    document.title = tabTitle.innerHTML;
     var head = hh + document.querySelector("head").innerHTML.trim();
     var body = hb + document.querySelector("body").innerHTML.trim();
     var text = head + body + tab + lyr + song + tun + str + inst + lett + bpm + psh + bh;
