@@ -1293,7 +1293,7 @@ E||-------||--------------|-3-----0------|--------------|-0-----0-----|</textare
       <li class="s6 liv">E||------|------|-----|----|----|--</li>
     </ul>
   <p></p>  
-  <p>Version 1.11 2/15/2021</p>
+  <p>Version 1.12 2/16/2021</p>
   </div><!--help text-->
     
       
@@ -1473,7 +1473,7 @@ E||-------||--------------|-3-----0------|--------------|-0-----0-----|</textare
     <footer id="foot">
       <a href="http://colortab.org/" target="_blank" rel="noreferrer noopener">ColorTab.org</a>&nbsp;&nbsp;
       <a href="https://colortab.org/ColorTabApp.html" target="_blank" rel="noreferrer noopener">APP</a> &nbsp;&nbsp;<a href="https://www.colortab.org/wp-content/uploads/scratch.htm" target="_blank" rel="noreferrer noopener">Scratch</a> &nbsp;<a href="http://colortab.org/musicxml/" target="_blank" rel="noreferrer noopener">XML</a>
-      <br>© Copyright 2021, Keith Thomas<br>Ðownstem Ðuration version 1.11</footer>
+      <br>© Copyright 2021, Keith Thomas<br>Ðownstem Ðuration version 1.12</footer>
   </div>  
 <script id="jScript">/*eslint-env es6, browser, amd*/
 /*eslint no-irregular-whitespace: ["error", { "skipRegExps": true }]*/
@@ -2606,7 +2606,8 @@ Offline clipboard paste may work in Chrome.
         })
         .catch(err => {
           pasteFail(err);
-        })      
+        });
+       return;//just paste if empty
     }
     //copy = false;
     //if (didPaste) return;
@@ -3009,7 +3010,7 @@ var nextStr = 10;
     reader.onload = function(event) {
       parseFile(event.target.result);
     };
-    reader.readAsText(file);
+    if (file != null && file.size > 0) reader.readAsText(file);
     return false;
   }
   
@@ -3061,8 +3062,8 @@ var nextStr = 10;
         tabTitle.innerHTML = whatever;
       }
       else {
-        songFile = this.files[0].name;
-        tabTitle.innerHTML = songFile.split(".txt")[0];
+        songFile = "title";
+        tabTitle.innerHTML = songFile;
       }    
   }
   
@@ -3076,7 +3077,7 @@ var nextStr = 10;
   function readFile(file, onLoadCallback) {
     var reader = new FileReader();
     reader.onload = onLoadCallback;
-    reader.readAsText(file);
+    if(file != null && file.size > 0) reader.readAsText(file);
   }
 
   function pasteLyrics() {
@@ -4024,6 +4025,7 @@ Spa ces and CaPiTals are ok
     metronome = !j.metronome;
     metroToggle();
     nP = j.playfrom;
+    setSelStart = nP;
     noteSelect(nP,nP);
     document.getElementById("sfont").selectedIndex = j.sfsource;
     document.getElementById("instrsf").selectedIndex = j.soundfont;
@@ -5245,14 +5247,14 @@ Spa ces and CaPiTals are ok
     if (!tabArea.value) tabInit();    
     mouseDown = true;
     mouseDown1 = true;
-    tabArea.setSelectionRange(0,0);//clear previous to prevent drag
+    //tabArea.setSelectionRange(0,0);//clear previous to prevent drag
   }
   
   function tab2MouseDown() {
     if (!tabArea.value) tabInit();    
     mouseDown = true;
     mouseDown2 = true;
-    tabArea2.setSelectionRange(0,0);//clear previous to prevent drag    
+    //tabArea2.setSelectionRange(0,0);//clear previous to prevent drag    
   }
   
   function ctMouseUp() {

@@ -1129,7 +1129,8 @@ Offline clipboard paste may work in Chrome.
         })
         .catch(err => {
           pasteFail(err);
-        })      
+        });
+       return;//just paste if empty
     }
     //copy = false;
     //if (didPaste) return;
@@ -1532,7 +1533,7 @@ var nextStr = 10;
     reader.onload = function(event) {
       parseFile(event.target.result);
     };
-    reader.readAsText(file);
+    if (file != null && file.size > 0) reader.readAsText(file);
     return false;
   }
   
@@ -1584,8 +1585,8 @@ var nextStr = 10;
         tabTitle.innerHTML = whatever;
       }
       else {
-        songFile = this.files[0].name;
-        tabTitle.innerHTML = songFile.split(".txt")[0];
+        songFile = "title";
+        tabTitle.innerHTML = songFile;
       }    
   }
   
@@ -1599,7 +1600,7 @@ var nextStr = 10;
   function readFile(file, onLoadCallback) {
     var reader = new FileReader();
     reader.onload = onLoadCallback;
-    reader.readAsText(file);
+    if(file != null && file.size > 0) reader.readAsText(file);
   }
 
   function pasteLyrics() {
@@ -2547,6 +2548,7 @@ Spa ces and CaPiTals are ok
     metronome = !j.metronome;
     metroToggle();
     nP = j.playfrom;
+    setSelStart = nP;
     noteSelect(nP,nP);
     document.getElementById("sfont").selectedIndex = j.sfsource;
     document.getElementById("instrsf").selectedIndex = j.soundfont;
@@ -3768,14 +3770,14 @@ Spa ces and CaPiTals are ok
     if (!tabArea.value) tabInit();    
     mouseDown = true;
     mouseDown1 = true;
-    tabArea.setSelectionRange(0,0);//clear previous to prevent drag
+    //tabArea.setSelectionRange(0,0);//clear previous to prevent drag
   }
   
   function tab2MouseDown() {
     if (!tabArea.value) tabInit();    
     mouseDown = true;
     mouseDown2 = true;
-    tabArea2.setSelectionRange(0,0);//clear previous to prevent drag    
+    //tabArea2.setSelectionRange(0,0);//clear previous to prevent drag    
   }
   
   function ctMouseUp() {
