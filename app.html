@@ -773,7 +773,7 @@ body {
 	transform-origin: 0 0;
 }
 #editButton {
-  display: none;
+  display: block;
   position: absolute;
   right: 65px;
   top: 0px;
@@ -1293,7 +1293,7 @@ E||-------||--------------|-3-----0------|--------------|-0-----0-----|</textare
       <li class="s6 liv">E||------|------|-----|----|----|--</li>
     </ul>
   <p></p>  
-  <p>Version 1.12 2/16/2021</p>
+  <p>Version 1.13 2/17/2021</p>
   </div><!--help text-->
     
       
@@ -1375,7 +1375,7 @@ E||-------||--------------|-3-----0------|--------------|-0-----0-----|</textare
   <div class="overtune tstripe" id="u9" style="display: none;"></div>  
   <textarea id="TuneIn" draggable="false" spellcheck="false" rows="6" style="color: white;"></textarea>
   <textarea id="TuneIn2" draggable="false" spellcheck="false" rows="6" style="display: block;"></textarea>  
-  <div id="TabBacker" style="background: rgb(232, 232, 232) none repeat scroll 0% 0%;"></div>
+  <div id="TabBacker" style="background: rgb(232, 232, 232) none repeat scroll 0% 0%; color: black;"></div>
   <div class="overlay stripe" id="t1" style="display: block; background-color: rgb(255, 255, 255);"></div>
   <div class="overlay stripe" id="t2" style="display: block; background-color: rgb(255, 220, 0);"></div>
   <div class="overlay stripe" id="t3" style="display: block; background-color: rgb(60, 200, 244);"></div>
@@ -1448,6 +1448,8 @@ E||-------||--------------|-3-----0------|--------------|-0-----0-----|</textare
 <tr><td contenteditable="true"><br></td><td></td><td contenteditable="true">0</td></tr>
 </tbody></table>
  </div>
+
+    </div><!--non-print-->  
   
   <div id="saveoptions">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Save and share your tab<br>&nbsp;<button id="savFile">Ù</button> offline .html app and tab ~2Mb<br>&nbsp;Save as <input id="filename"><br>&nbsp;<button id="savtxt" type="button">Save</button> tab as CT_file.txt  ~10kb<br><br>
     <div style="display: inline">&nbsp;<button id="makeclink">Make CLink</button> share this tab<div id="clinktext"></div> <a id="ctlink" href="" target="_blank"></a>
@@ -1457,10 +1459,10 @@ E||-------||--------------|-3-----0------|--------------|-0-----0-----|</textare
   
 
 
-    </div><!--non-print--> 
+ 
 
     <div id="printThis">  
-      <button id="editButton" type="button">Edit</button>
+      <button id="editButton" type="button" class="toggle off">Edit</button>
       <div id="sTitle">
         <div spellcheck="false" id="songTitle" contenteditable="true">title</div>
       </div>
@@ -1473,7 +1475,7 @@ E||-------||--------------|-3-----0------|--------------|-0-----0-----|</textare
     <footer id="foot">
       <a href="http://colortab.org/" target="_blank" rel="noreferrer noopener">ColorTab.org</a>&nbsp;&nbsp;
       <a href="https://colortab.org/ColorTabApp.html" target="_blank" rel="noreferrer noopener">APP</a> &nbsp;&nbsp;<a href="https://www.colortab.org/wp-content/uploads/scratch.htm" target="_blank" rel="noreferrer noopener">Scratch</a> &nbsp;<a href="http://colortab.org/musicxml/" target="_blank" rel="noreferrer noopener">XML</a>
-      <br>© Copyright 2021, Keith Thomas<br>Ðownstem Ðuration version 1.12</footer>
+      <br>© Copyright 2021, Keith Thomas<br>Ðownstem Ðuration version 1.13</footer>
   </div>  
 <script id="jScript">/*eslint-env es6, browser, amd*/
 /*eslint no-irregular-whitespace: ["error", { "skipRegExps": true }]*/
@@ -1482,6 +1484,7 @@ E||-------||--------------|-3-----0------|--------------|-0-----0-----|</textare
 (function() {
   'use strict'
   //global variables
+  var showEditButton = true;
   var editInstr;
   var soundfont;// = new Soundfont(ctx);
   var instChoice = "offline";
@@ -2643,6 +2646,20 @@ Offline clipboard paste may work in Chrome.
     if (showNotes) addClass.innerHTML = "&#xE1d7;";
     else addClass.innerHTML = "&#xE560;";    
     checkChange();    
+  }
+  
+  function editClick() {
+    showEditButton ? showEditButton = false :  showEditButton = true;
+    if (showEditButton) {
+      document.getElementById("editButton").setAttribute("class", "toggle off");
+      document.getElementById("nonPrint").style.display = "block";
+      document.getElementById("menuTog").style.display = "inline-block";
+    }
+    else {
+      document.getElementById("editButton").setAttribute("class", "toggle black");
+      document.getElementById("nonPrint").style.display = "none";
+      document.getElementById("menuTog").style.display = "none";
+    }
   }
   
   function menuToggle(){
@@ -3990,6 +4007,7 @@ Spa ces and CaPiTals are ok
     appData.capo = capoShift;
     appData.pitches = pitchShift;
     appData.metronome = metronome;
+    appData.edit = showEditButton;
     appData.playfrom = tabArea.selectionStart;
     if (!sectStart) appData.playfrom += 1;//adjust if bar line removed
     appData.sfsource = document.getElementById("sfont").selectedIndex;
@@ -4022,8 +4040,10 @@ Spa ces and CaPiTals are ok
     capoChange();
     pitchShift = j.pitches;
     writePitches(pitchShift);
-    metronome = !j.metronome;
+    metronome = !j.metronome;  
     metroToggle();
+    showEditButton = !j.edit;
+    editClick();
     nP = j.playfrom;
     setSelStart = nP;
     noteSelect(nP,nP);
@@ -4168,10 +4188,10 @@ Spa ces and CaPiTals are ok
   
   function addEvents() {
     window.addEventListener('beforeunload', function (e) {
-      if (undoCount < 2) return;
+      if (undoCount < 2 || !showEditButton) return;
       e.preventDefault();
       e.returnValue = '';
-    });    
+    });
     makeButton.onclick = makeCLink;
     document.getElementById("sharebutton").onclick = shareDialog;
     document.getElementById("sharedone").onclick = shareDone;    
@@ -5762,6 +5782,7 @@ permissionStatus.onchange = () => {
         lyricBarsFromTab();
         document.getElementById("LyricIn").value = lyr.value;
         tabTitle.innerHTML = song.innerHTML;
+        editClick();
       }
       showButtons = true; menuToggle();
       barFrom = "Tab";
@@ -5770,6 +5791,7 @@ permissionStatus.onchange = () => {
       document.getElementById("nonPrint").style.display = "none";
       document.getElementById("menuTog").style.display = "none";
       document.getElementById("editButton").style.display = "block";
+      document.getElementById("saveoptions").style.display = " none";
     }
     else useLink();
     readPitches();
@@ -5780,14 +5802,6 @@ permissionStatus.onchange = () => {
     var empty = document.getElementById("lyricSave");
     var yes = (empty && empty.value.length > 0) ? true : false;
     return yes;
-  }
-
-  function editClick() {
-    document.getElementById("nonPrint").style.display = "block";
-    document.getElementById("menuTog").style.display = "inline-block";
-    document.getElementById("editButton").style.display = "none";
-    var inst = document.getElementById("instSave").innerHTML;    
-    if (inst) document.getElementById("instr").innerHTML = inst;
   }
   
   function locateTabCursor(add) {

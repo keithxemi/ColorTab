@@ -5,6 +5,7 @@
 (function() {
   'use strict'
   //global variables
+  var showEditButton = true;
   var editInstr;
   var soundfont;// = new Soundfont(ctx);
   var instChoice = "offline";
@@ -1166,6 +1167,20 @@ Offline clipboard paste may work in Chrome.
     if (showNotes) addClass.innerHTML = "&#xE1d7;";
     else addClass.innerHTML = "&#xE560;";    
     checkChange();    
+  }
+  
+  function editClick() {
+    showEditButton ? showEditButton = false :  showEditButton = true;
+    if (showEditButton) {
+      document.getElementById("editButton").setAttribute("class", "toggle off");
+      document.getElementById("nonPrint").style.display = "block";
+      document.getElementById("menuTog").style.display = "inline-block";
+    }
+    else {
+      document.getElementById("editButton").setAttribute("class", "toggle black");
+      document.getElementById("nonPrint").style.display = "none";
+      document.getElementById("menuTog").style.display = "none";
+    }
   }
   
   function menuToggle(){
@@ -2513,6 +2528,7 @@ Spa ces and CaPiTals are ok
     appData.capo = capoShift;
     appData.pitches = pitchShift;
     appData.metronome = metronome;
+    appData.edit = showEditButton;
     appData.playfrom = tabArea.selectionStart;
     if (!sectStart) appData.playfrom += 1;//adjust if bar line removed
     appData.sfsource = document.getElementById("sfont").selectedIndex;
@@ -2545,8 +2561,10 @@ Spa ces and CaPiTals are ok
     capoChange();
     pitchShift = j.pitches;
     writePitches(pitchShift);
-    metronome = !j.metronome;
+    metronome = !j.metronome;  
     metroToggle();
+    showEditButton = !j.edit;
+    editClick();
     nP = j.playfrom;
     setSelStart = nP;
     noteSelect(nP,nP);
@@ -2691,10 +2709,10 @@ Spa ces and CaPiTals are ok
   
   function addEvents() {
     window.addEventListener('beforeunload', function (e) {
-      if (undoCount < 2) return;
+      if (undoCount < 2 || !showEditButton) return;
       e.preventDefault();
       e.returnValue = '';
-    });    
+    });
     makeButton.onclick = makeCLink;
     document.getElementById("sharebutton").onclick = shareDialog;
     document.getElementById("sharedone").onclick = shareDone;    
@@ -4285,6 +4303,7 @@ permissionStatus.onchange = () => {
         lyricBarsFromTab();
         document.getElementById("LyricIn").value = lyr.value;
         tabTitle.innerHTML = song.innerHTML;
+        editClick();
       }
       showButtons = true; menuToggle();
       barFrom = "Tab";
@@ -4293,6 +4312,7 @@ permissionStatus.onchange = () => {
       document.getElementById("nonPrint").style.display = "none";
       document.getElementById("menuTog").style.display = "none";
       document.getElementById("editButton").style.display = "block";
+      document.getElementById("saveoptions").style.display = " none";
     }
     else useLink();
     readPitches();
@@ -4303,14 +4323,6 @@ permissionStatus.onchange = () => {
     var empty = document.getElementById("lyricSave");
     var yes = (empty && empty.value.length > 0) ? true : false;
     return yes;
-  }
-
-  function editClick() {
-    document.getElementById("nonPrint").style.display = "block";
-    document.getElementById("menuTog").style.display = "inline-block";
-    document.getElementById("editButton").style.display = "none";
-    var inst = document.getElementById("instSave").innerHTML;    
-    if (inst) document.getElementById("instr").innerHTML = inst;
   }
   
   function locateTabCursor(add) {
