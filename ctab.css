@@ -999,9 +999,12 @@ textarea {
   color: #0f0;
   font-size: 20px;   
 }
-  #ctlink {
-    color: #00f;
-  }  
+#ctlink {
+  color: #00f;
+}
+#midilink {
+  color: #00f;
+}  
 #helpcolorButton {
   font-family: 'Freebrat';
   font-size: 20px;
