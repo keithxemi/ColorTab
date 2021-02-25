@@ -2620,6 +2620,7 @@ Spa ces and CaPiTals are ok
     theLink.search = "clink=" + encodeURIComponent(data[0]) + "&soup=" + encodeCLink(text);
     getTiny = new Request('https://tinyurl.com/api-create.php?url=' + theLink.href);
     document.getElementById("saveoptions").style.display = 'block';
+    playPrep();
     makeMidi();
   }
   
@@ -4322,23 +4323,28 @@ permissionStatus.onchange = () => {
   
   function makeMidi() {//https://jazz-soft.net/doc/JZZ/midifile.html
     var midiTitle = tabTitle.innerHTML;
-    var tempo = document.getElementById("tempo").value;
-    var ticksPerQuarter = parseInt((60.0/tempo * 96).toFixed());
-  
-    var smf = new JZZ.MIDI.SMF(1, ticksPerQuarter);// Create a MIDI file. Type 1
-    var trk0 = new JZZ.MIDI.SMF.MTrk(); smf.push(trk0); // First track in Type 1 MIDI file is normally used for tempo changes
-    var trk1 = new JZZ.MIDI.SMF.MTrk(); smf.push(trk1); // This one will be for the karaoke lyrics
-    var trk2 = new JZZ.MIDI.SMF.MTrk(); smf.push(trk2); // This one will be for the music
+    checkTempo(0);
+    var tempo = 60.0/secsPerBeat;
+    var prevSecsPerBeat = secsPerBeat;
+    const ticksPerQuarter = 960;
+    
+    var smf = new JZZ.MIDI.SMF(1, ticksPerQuarter);
+    var trk0 = new JZZ.MIDI.SMF.MTrk(); smf.push(trk0); // tempo changes
+    var trk1 = new JZZ.MIDI.SMF.MTrk(); smf.push(trk1); // lyrics
+    var trk2 = new JZZ.MIDI.SMF.MTrk(); smf.push(trk2); // notes
 
     trk0.smfSeqName(midiTitle).smfBPM(tempo);
 
     var beats, beatsum = 0, words;
+    var bars = lyricText.replace(/(\|\|)/g, "| ").split("|"); //parts|| and bars| are measures
+    if (!bars[0]) bars.shift();
     trk1.smfSeqName('Lyrics').smfText('@T' + midiTitle);
-    for (var i = 0; i < lyricTextBars.length; i++) {
+    for (var i = 0; i < bars.length; i++) {
       beats = i * measureSums[i] * ticksPerQuarter;
-      if (beats !== beats || beats === 0) beats = beatsum + 1;
+      if (beats !== beats || beats === 0) beats = beatsum;
       beatsum = beats;
-      words = lyricTextBars[i].trim();
+      words = bars[i].trim();
+      if (beats === 0) beats = 1;//don't use tick(0) for lyrics
       trk1.add(beats, JZZ.MIDI.smfText(words));
     }
     
@@ -4347,15 +4353,27 @@ permissionStatus.onchange = () => {
     
     trk2.smfSeqName('ColorTab').ch(0).program(midiProgram[midiInstr]); // set channel, program instrument
      
-    var nOn = 0, nOff = 0, nPitch;
+    var nOn = 0, nOff = 0, dur, nPitch, step = 0, time = 0;
     for (i = 0; i < songLength; i++) { // playThings[][pitch, time, duration,id,tab pos]
       if(playThings[i][0] === 0) continue;//rest
       if(playThings[i][0] === 101 || playThings[i][0] === 102) continue;//metronome
-      nOn = parseInt((playThings[i][1] * ticksPerQuarter).toFixed(0));
-      nOff = nOn + parseInt((playThings[i][2] * ticksPerQuarter).toFixed(0));
+      step = playThings[i][1] - time;//time increase in seconds
+      time += step;
+      nOn += step / secsPerBeat * ticksPerQuarter;      
+      checkTempo(playThings[i][4]);
+      if (secsPerBeat != prevSecsPerBeat) {
+        trk0.add(nOn, JZZ.MIDI.smfBPM(60.0/secsPerBeat));
+        prevSecsPerBeat = secsPerBeat;
+      }
+      dur = playThings[i][2] / secsPerBeat * ticksPerQuarter;
+      nOff = nOn + dur;
       nPitch = playThings[i][0];
-      trk2.add(nOn * 2, JZZ.MIDI.noteOn(0,nPitch));// ticks * 2??
-      trk2.add(nOff * 2, JZZ.MIDI.noteOff(0,nPitch));
+      
+      //console.log(i/2 + 1,"nOn",nOn,"dur",dur,"pTime",playThings[i][1],"pDur",playThings[i][2],secsPerBeat,ticksPerQuarter)
+      if (nOn === 0) nOn = 1;
+      trk2.add(nOn, JZZ.MIDI.noteOn(0,nPitch));
+      if (nOn === 1) nOn = 0;
+      trk2.add(nOff, JZZ.MIDI.noteOff(0,nPitch));
     }
       trk2.add(nOff,JZZ.MIDI.smfEndOfTrack());
 
@@ -4838,12 +4856,12 @@ see the Help Etc. section
 
   function greenSleeves() {
     var txt =
-      `e|----|------0--10-|----Em---------|-------------|----------|-------0--10-|----Em---------|----------------|--------|-3--3--1-0-|G---Em-------|---F----------|E--------|3--3--2-0-|G---Em------|--------------|-----|
-B|----|-1--3---------|-3-0------0-|1------------|-0--------|-1--3---------|-3--0------0-|1---0----------|--------|-1-----------|-3--0----0-|1-------------|-0-------|------------|-3--0---0-|1--0---------|------|
-G|--2|---------------|-------0-2----|---2-2-1-2|---1--2-|---------------|-------0-2----|------2-1----1|--2--2--|-0-----------|------0-2---|--2-2--1-2-|----1---|------------|-----0--2--|----2-1---1-|2--2--|
-D|----|---------------|---------------|-------------|----2-----|---------------|---------------|------------4--|--------|-2-----------|-------------|--------------|------2--|------------|------------|----------4--|------|
-A|₁₀₀|-0----0-----|G--------------|0--F-0----|E---------|-0----0-----|G--------------|0-----E-------|--0-0-|-3-3------|-------------|0------------|---------|3-3------|------------|0-----------|0-0-|
-E|---|-Am------------|-3----0-----|Am-----------|-0-0----|-Am------------|-3----0-----|Am-------0----|Am------|-C----------|-3---0----|Am---1------|-0---0-|C-----------|-3--0----|Am---E-0----|------|`;
+      ` e|---|------0--10-|----Em---------|-------------|----------|-------0--10-|----Em---------|----------------|--------|-3--3--1-0-|G---Em-------|---F----------|E--------|3--3--2-0-|G---Em------|--------------|-----|
+ B|---|-1--3---------|-3-0------0-|1------------|-0--------|-1--3---------|-3--0------0-|1---0----------|--------|-1-----------|-3--0----0-|1-------------|-0-------|------------|-3--0---0-|1--0---------|------|
+ G|-2|---------------|-------0-2----|---2-2-1-2|---1--2-|---------------|-------0-2----|------2-1----1|--2--2--|-0-----------|------0-2---|--2-2--1-2-|----1---|------------|-----0--2--|----2-1---1-|2--2--|
+ D|----|---------------|---------------|-------------|----2-----|---------------|---------------|------------4--|--------|-2-----------|-------------|--------------|------2--|------------|------------|----------4--|------|
+ A|₁₀₀|-0----0-----|G--------------|0--F-0----|E---------|-0----0-----|G--------------|0-----E-------|--0-0-|-3-3------|-------------|0------------|---------|3-3------|------------|0-----------|0-0-|
+ E|---|-Am------------|-3----0-----|Am-----------|-0-0----|-Am------------|-3----0-----|Am-------0----|Am------|-C----------|-3---0----|Am---1------|-0---0-|C-----------|-3--0----|Am---E-0----|------|`;
     newLines = txt.split("\n");
     append = false;
     ctabOut.innerHTML = "";
