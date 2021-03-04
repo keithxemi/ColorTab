@@ -1222,7 +1222,7 @@ Offline clipboard paste may work in Chrome.
     var c, t = [], p, n;
     for (var i = 1;i<10;i++) {//one based
       c = ptable.rows[i].cells[0].textContent;
-      if (c) t[i] = c.padStart(3);
+      if (c) t[i] = c.trimStart().padStart(3);
       var x = parseFloat(ptable.rows[i].cells[2].textContent);      
       if (x != x) x = 0;//!NaN
       if (x > 24) x = 0;//max
@@ -1597,11 +1597,11 @@ var nextStr = 10;
         lyricArea.value = lyricText;
         if (barFrom === "Tab") lyricBarsFromTab();
         if (barFrom === "Lyr") tabBarsFromLyrics(lyricText);
-        tabTitle.innerHTML = whatever;
+        tabTitle.innerText = whatever;
       }
       else {
         songFile = "title";
-        tabTitle.innerHTML = songFile;
+        tabTitle.innerText = songFile;
       }    
   }
   
@@ -2509,7 +2509,7 @@ Spa ces and CaPiTals are ok
   }
   
   function collectData(){
-    var split = [], cpy = [], tabString, whatString = tabTitle.innerHTML, appData = {}, lyricString;
+    var split = [], cpy = [], tabString, whatString = tabTitle.innerText, appData = {}, lyricString;
     var tempo = document.getElementById("tempo");
     split = tabArea.value.split("\n");
     if (split[0][0] === "|") var sectStart = true; //don't save first bar line, add back on open
@@ -2615,7 +2615,7 @@ Spa ces and CaPiTals are ok
     var data = collectData();
     var text = data[0] + ":\n\n" + data[1] + "\n\n" + JSON.stringify(data[2]) + "\n\nLyrics:\n" +  data[3];
     saveName = document.getElementById("filename");
-    saveName.value = tabTitle.innerHTML;
+    saveName.value = tabTitle.innerText;
     var theLink = new URL("https://colortab.org/ColorTabApp.html");
     theLink.search = "clink=" + encodeURIComponent(data[0]) + "&soup=" + encodeCLink(text);
     getTiny = new Request('https://tinyurl.com/api-create.php?url=' + theLink.href);
@@ -2715,6 +2715,13 @@ Spa ces and CaPiTals are ok
       e.preventDefault();
       e.returnValue = '';
     });
+    document.querySelector("div[contenteditable]").addEventListener("paste", function(e) {
+        e.preventDefault();
+        var text = e.clipboardData.getData("text/plain");
+        var temp = document.createElement("div");
+        temp.innerHTML = text;
+        document.execCommand("insertHTML", false, temp.textContent);
+    });    
     makeButton.onclick = makeCLink;
     document.getElementById("sharebutton").onclick = shareDialog;
     document.getElementById("sharedone").onclick = shareDone;    
@@ -4322,7 +4329,7 @@ permissionStatus.onchange = () => {
   }
   
   function makeMidi() {//https://jazz-soft.net/doc/JZZ/midifile.html
-    var midiTitle = tabTitle.innerHTML;
+    var midiTitle = tabTitle.innerText;
     checkTempo(0);
     var tempo = 60.0/secsPerBeat;
     var prevSecsPerBeat = secsPerBeat;
@@ -4382,7 +4389,7 @@ permissionStatus.onchange = () => {
     var uri = 'data:audio/midi;base64,' + b64; // data URI
 
     document.getElementById('midiout').innerHTML = 
-      '<a id="midilink" download=' + tabTitle.innerHTML + '.mid href=' + uri + '>Download Midi File</a>';
+      '<a id="midilink" download=' + tabTitle.innerText + '.mid href=' + uri + '>Download Midi File</a>';
 }  
   
   function foundSavedLyrics(){   
@@ -4786,8 +4793,8 @@ permissionStatus.onchange = () => {
     var instTxt = "Guitar";
     if (document.getElementById("instr"))
       instTxt = document.getElementById("instr").innerHTML;
-    var fn = tabTitle.innerHTML + ".html"; //filename    
-    var song = "<div id='songSave' style='display:none'>" + tabTitle.innerHTML + "</div>";
+    var fn = tabTitle.innerText + ".html"; //filename    
+    var song = "<div id='songSave' style='display:none'>" + tabTitle.innerText + "</div>";
     var lett = "<div id='ltrSave' style='display:none'>" + lyricLtrSpace + "</div>";
     var inst = "<div id='instSave' style='display:none'>" + instTxt + "</div>";
     
@@ -4800,7 +4807,7 @@ permissionStatus.onchange = () => {
     var bh = `
 </body>
 </html>`;
-    document.title = tabTitle.innerHTML;
+    document.title = tabTitle.innerText;
     var head = hh + document.querySelector("head").innerHTML.trim();
     var body = hb + document.querySelector("body").innerHTML.trim();
     var text = head + body + tab + lyr + song + tun + str + inst + lett + bpm + psh + bh;
@@ -4866,7 +4873,7 @@ see the Help Etc. section
     append = false;
     ctabOut.innerHTML = "";
     findTab();
-    tabTitle.innerHTML = "Greensleeves";
+    tabTitle.innerText = "Greensleeves";
   }
   
 }());
