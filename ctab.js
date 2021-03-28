@@ -157,9 +157,9 @@
   const thin = String.fromCharCode(8201); //&#x2009; 4px
   const musicSym =/[\xb2\xb3\xb9\u2070-\uf5fa]/;
   
-  const noteUpDurations = {"\uE1d2":4,"\uECA1":3,"\uE1d3":2,"\uECA3":1.5,"\uE1d5":1,"\uECA5":0.75,"\uE1d7":0.5,"\uECA7":0.375,"\uE1d9":0.25,"\uE1db":0.125,"\uE1dd":0.015625,"\uE1df":0.0078125,"\uE1e1":0.00390625,"\uE560":0,"\uEcad":0.75,"\uE1F3":0.5,"\uEcae":0.375,"\uE1F5":0.25,"\uE1F6":0.125};  
+  const noteUpDurations = {"\uE1d2":4,"\uECA1":3,"\uE1d3":2,"\uECA3":1.5,"\uE1d5":1,"\uECA5":0.75,"\uE1d7":0.5,"\uECA7":0.375,"\uE1d9":0.25,"\uE1db":0.125,"\uE1dd":0.0625,"\uE1df":0.03125,"\uE1e1":0.015625,"\uE560":0,"\uEcad":0.75,"\uE1F3":0.5,"\uEcae":0.375,"\uE1F5":0.25,"\uE1F6":0.125};  
   
-  const noteDnDurations = {"\uE1D4":2,"\uE1D6":1,"\uE1D8":0.5,"\uE1DA":0.25,"\uE1DC":0.125,"\uEca2":3,"\uEca4":1.5,"\uEca6":0.75,"\uEca8":0.375,"\uE1de":0.015625,"\uE1e0":0.0078125,"\uE1e2":0.00390625,"\uE561":0};  
+  const noteDnDurations = {"\uE1D4":2,"\uE1D6":1,"\uE1D8":0.5,"\uE1DA":0.25,"\uE1DC":0.125,"\uEca2":3,"\uEca4":1.5,"\uEca6":0.75,"\uEca8":0.375,"\uE1de":0.0625,"\uE1e0":0.03125,"\uE1e2":0.015625,"\uE561":0};  
 
   const restDurations = {"\uE4F4":4,"\uEcaf":3,"\uE4F5":2,"\uEcb0":1.5,"\uE4E5":1,"\uEcb1":0.75,"\uE4E6":0.5,"\uEcb2":0.375,"\uE4E7":0.25,"\uE4E8":0.125,"\uE4e9":0.0625,"\uE4ea":0.03125,"\uE4eb":0.015625}
 
