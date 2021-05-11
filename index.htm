@@ -23,6 +23,7 @@
   <script id="ljs2" src="offline.js"></script>  
   <script id="lcss" type="text/javascript" src=".\ctab.css" ></script>
   <script id="ljs" type="text/javascript" src=".\ctab.js" ></script>
+  <script id="ljs" type="text/javascript" src=".\xmltab.js" ></script>  
 </head>
 
 <body>
@@ -74,6 +75,8 @@ E||-------||--------------|-3-----0------|--------------|-0-----0-----|</textare
     <p>Tab for any stringed instrument with 4 to 9 strings can be converted or created. The <select id="help6"><option>6 Guitar</option></select> selector has standard choices with the most common tunings. The instrument name shown in the ColorTab can be edited. String notes and tab matching starting characters can be customized for any tuning. Instrument selection should be done before adding or composing tab. However, the matching pattern and notes can be changed anytime for combining tab from sources with different formats, see the Tuning and Tab Matching section.</p>
     <h3>Copy Existing Tab</h3>
     <p>Copy any text tab and paste to immediately convert into ColorTab. Use the browser menu paste, right click or Ctrl/Cmd+V to insert tab copied from other apps. The <button>Paste</button> button is used for tab sections copied in the editor, while clipboard content is pasted by the browser. Lines of text that do not begin with string notes in proper sequence are ignored so <em>an entire page can be copied and pasted at once</em>. Only the tablature portion of pasted text remains after conversion. If "No tab found" results, starting string note letters do not match the beginnings on any group of tab lines. The matching pattern can be changed to match any tab style, see the Tuning and Tab Matching section.</p>
+    <h3>Open, Share and Save Files <button style="color: #0f0">&#x00da;</button></h3>
+    <p>The <button>&#x00d9;</button> downloads songs as ColorTab web pages (local .html files) using the song title as file name. These can be used offline without Internet, they include all editing tools and can resave as new songs or versions. Tab text files are loaded directly with <button >Open</button> or by drag and drop in the tab area. The new tab from the file will be inserted at the cursor. <em>Import MusicXML</em> tab directly with open or drop. Share your tab with a <button style="color: #0f0">Clink</button> that stores the notes in a URL that can be sent and bookmarked. Use <button>Save</button> to make a ColorTab text file that includes music note symbols and has very small file size. <em>Export MIDI files</em> from your tab for import into other notation or playback software. Print ColorTab to PDF or paper using the browser print function. The background is white, text and controls do not print, and page scaling and rotation can be set as desired. Choose the print background graphics option for color.</p>  
     <h3>Editing Tab Text</h3>
     <p>Tab in the text box can be easily edited and ColorTab below is updated instantly. Composing new tab is also quick and easy. All string lines can be changed together. <button>Copy</button> or <button >Cut</button> part of tab text using the start and end of a highlighted selection. Only one line will show as selected but all will be copied or removed. <button >Paste</button> inserts selected lines at the cursor, click or move elsewhere and paste to insert tab anywhere including the end or beginning. Any line can be used to position the insertion cursor. Copy or Cut tab sections to paste them into other text apps from the clipboard. If nothing is highlighted the entire tab text is copied or cut. A Scratch Pad app provided on the website can be used to paste, copy and save ColorTab text.</p>
     <p> <kbd>Backspace</kbd> and <kbd>Delete</kbd> keys remove one column at a time. <kbd>Space</kbd> or <kbd>Insert</kbd> keys add a column of dashes at the cursor position. Measure bars can be inserted using the <kbd>&crarr;</kbd>, <kbd>Enter</kbd> or <kbd>|</kbd> key, or by  copying. Fret numbers or other characters overtype exising tab. Adding a note that would fall on a bar will insert a new column. Adding at the end fills in dashes on all other lines. Fret numbers typed sequentially on the same string will automatically be separated by dashes, saving keystrokes (two digit entries up to fret 24 will not add dashes). <button >&#x0d2;</button> Undo and <button >&#x0d3;</button> Redo are <kbd>Page Up</kbd> and <kbd>Page Down</kbd> keys. <kbd>&larr;</kbd> <kbd>&uarr;</kbd> <kbd>&darr;</kbd> <kbd>&rarr;</kbd>, <kbd>Home</kbd>, <kbd>End</kbd> touch or the mouse can be used to move around.</p>
@@ -90,9 +93,6 @@ E||-------||--------------|-3-----0------|--------------|-0-----0-----|</textare
     <h3>Music Symbols</h3>
     <p>Notes, rests, articulations, barlines, dynamics, fingering, time signatures etc., can be added in the tab or the lyric text area. The <button>&#x0d4;</button> button reveals a table with all music symbols. These can be entered at the cursor location with a single click on the desired symbol. Notes should be placed immediately after a fret number to indicate duration in the ColorTab. See the Duration and Timing section for more information.</p>
     <p>Musical symbols that are not associated with fret number notes can also be added. These are typically at the beginning or end of measures but can be inserted anywhere. Symbols that do not follow fret numbers will appear in the ColorTab on a gray background like this <span class="o">&nbsp;&#xE040; &#xE046; &#xE048; &#xE041;</span> They may be red if they can't be correctly interpreted. The text tab is converted to ColorTab from bottom string up to top and then from left to right.</p>
-    <h3>Open and Save Files</h3>
-    <p>The <button>&#x00d9;</button> downloads songs as ColorTab web pages (local .html files) using the song title as file name. These can be used offline without Internet, they include all editing tools and can resave as new songs or versions. Tab text files are loaded directly with <button >Open</button> or by drag and drop in the tab area. The new tab from the file will be inserted at the cursor. Use <button>Save</button> to make a ColorTab text file that includes music symbols and has very small file size. Print ColorTab to PDF or paper using the browser print function. The background is white, text and controls do not print, and page scaling and rotation can be set as desired. Choose the print background graphics option for color. Import tab from <a class="helpLink" href="http://colortab.org/musicxml/" target="_blank" rel="noreferrer noopener">MusicXML</a> using this link. </p>
-  
     <h3>Duration and Timing</h3>
     <p>See <a class="helpLink" href="https://www.colortab.org/duration-and-timing/" target="_blank" rel="noreferrer noopener">this</a> for additional details and examples. Here are the ways ColorTab uses musical note symbols like &#xE1d9; and &#xE1DA;.</p>
     <p>&#xE111; Symbols that are not by a fret number have a gray background in the ColorTab. These change defaults and affect all following notes.</p>
@@ -138,7 +138,7 @@ E||-------||--------------|-3-----0------|--------------|-0-----0-----|</textare
       <li class="s6 liv">E||------|------|-----|----|----|--</li>
     </ul>
   <p></p>  
-  <p>Version 1.176 3/28/2021</p>
+  <p>Version 1.20 5/10/2021</p>
   </div><!--help text-->
     
       
@@ -150,7 +150,7 @@ E||-------||--------------|-3-----0------|--------------|-0-----0-----|</textare
 </div>
 <div id="nonPrint">      
      
-      <div id="toprow" class="morebuttons"><label id="openLabel" for="chooseFile" class="fileLabel">Open</label><input type='file' id="chooseFile" accept='.txt, text/plain'> <select id="numStrings" >
+      <div id="toprow" class="morebuttons"><label id="openLabel" for="chooseFile" class="fileLabel">Open</label><input type='file' id="chooseFile" accept='.txt, .mxl, .musicxml, .text, .xml,'> <select id="numStrings" >
         <option value="4 Bass">4&nbsp;&nbsp;Bass</option>
         <option value="4 Mandolin">4&nbsp;&nbsp;Mandolin</option>
         <option value="4 Ukulele">4&nbsp;&nbsp;Ukulele</option>
@@ -318,8 +318,8 @@ E||-------||--------------|-3-----0------|--------------|-0-----0-----|</textare
     
     <footer id="foot">
       <a href="http://colortab.org/" target="_blank" rel="noreferrer noopener">ColorTab.org</a>&nbsp;&nbsp;
-      <a href="https://colortab.org/ColorTabApp.html" target="_blank" rel="noreferrer noopener">APP</a> &nbsp;&nbsp;<a href="https://www.colortab.org/wp-content/uploads/scratch.htm" target="_blank" rel="noreferrer noopener">Scratch</a> &nbsp;<a href="http://colortab.org/musicxml/" target="_blank" rel="noreferrer noopener">XML</a>
-      <br>&copy; Copyright 2021, Keith Thomas<br>&#x00D0;ownstem &#x00D0;uration version 1.17</footer>
+      <a href="https://colortab.org/ColorTabApp.html" target="_blank" rel="noreferrer noopener">APP</a> &nbsp;&nbsp;<a href="https://www.colortab.org/wp-content/uploads/scratch.htm" target="_blank" rel="noreferrer noopener">Scratch</a>
+      <br>&copy; Copyright 2021, Keith Thomas<br>&#x00D0;ownstem &#x00D0;uration version 1.20</footer>
   </div>  
 <script id="jScript"></script>
 </body>
