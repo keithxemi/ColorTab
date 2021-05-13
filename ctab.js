@@ -151,7 +151,6 @@
   var undoScroll;// = lyricArea.scrollLeft;  
   var songFile = "";
   var instrument = "6 Guitar";
-  var asciiLen = 0;
   var keepRests = true;  
   var divisions = []; //duration of quarter note 
   const defaultDivisions = 1;
@@ -1893,6 +1892,7 @@ var nextStr = 10;
         k = j.shift();
         if (k in subSymbols) tempos[i] += subSymbols[k];
       }
+      tempos[i] += "-";
       k = measureNotes[i];
       measureNotes[i]++;
       bars[i][k] = i;
@@ -1976,7 +1976,7 @@ var nextStr = 10;
   var tabNotes = [];
   var x = 0;
   var y = 0;
-  for (i = 0;i < musicLength + 1; i++) {
+  for (i = 0;i < musicLength; i++) {
     tabMeasures[i] = [];
     while (collectNotes[x] && i === collectNotes[x][0]) {
       tabMeasures[i][y] = collectNotes[x].slice();
@@ -2000,6 +2000,7 @@ var nextStr = 10;
   }    
     
   tabCount = tabNotes.length; 
+
     
   //collect tied note durations in array   
   for (i=0;i<tabCount;i++) {
@@ -2109,8 +2110,8 @@ var nextStr = 10;
   }
       
   function addNoteSymbol(n) {//and rests
-    if (tabNotes[n + 1] && tabNotes[n + 1][Timing] && (tabNotes[n][Fret] === "|" || tabNotes[n][Timing] === -1) && tabNotes[n + 1][Timing] !== 0) {//first note not at start
-      tabNotes.splice(n + 1,0,[tabNotes[n][Bar], tabStrings - 1, tiedRest(n + 1,tabNotes[n + 1][Timing]), false, true, [0], "","","x"]);
+    if (tabNotes[n + 1] && tabNotes[n + 1][Timing] && (tabNotes[n][Fret] === "|" || tabNotes[n][Timing] === -1) && tabNotes[n + 1][Timing] >= 0) {//first note not at start
+      tabNotes.splice(n + 1,0,[tabNotes[n][Bar], tabStrings - 1, tiedRest(n + 1,tabNotes[n + 1][Timing]), false, true, [0], "","","R"]);
       tabCount++;//add rest at beginning of measure
       return;
     }
@@ -2201,7 +2202,7 @@ var nextStr = 10;
   }
     
   function tiedRest(n,need){
-    if (need === 0) return;
+    if (need <= 0) return;
     var noteSymbol = restSym(need);
     if (noteSymbol) return noteSymbol;
     noteSymbol = "";
@@ -2279,7 +2280,7 @@ var nextStr = 10;
     }
   }
     
- var headDefault = upDurations["d" + defaultNote].padStart(tabStrings,"-").split("")    
+ var headDefault = upDurations["d" + defaultNote].padStart(tabStrings,"-").split("");
   
   var startChars = [];
   if (stringNames.length > 0) {
@@ -2291,7 +2292,7 @@ var nextStr = 10;
   
   var asciiTabInline = "";//inline
   for (i=0;i<tabStrings;i++) {
-    asciiTabInline += startChars[i] + headDefault[i] + tabText[tabStrings - 1 - i];
+    asciiTabInline += startChars[i] + tabText[tabStrings - 1 - i];
     asciiTabInline += "\n";
   }
   
@@ -2318,98 +2319,7 @@ var nextStr = 10;
     }
     measurePos += mLengths[i];
   }
-
-  var mCount = 0;
-  var planStaves = [];
-  var staveCount = 0;
-  var staveLength = 0;
-if (asciiLen > 0) { //skip if no len  
-  while 
-    (keepMeasures && mCount < musicLength && staveCount < musicLength) {
-      if ((staveLength + tabMeasures[mCount][0].length) < asciiLen){
-        staveLength += tabMeasures[mCount][0].length;
-        planStaves[staveCount] = mCount;
-        mCount++;
-      }
-      else { //stave is full
-        if (staveLength === 0) staveCount = musicLength;
-        staveLength = 0;
-        staveCount++;
-      }
-  }
-}
-
-  var asciiTabScore = "";
-  var aTab = []; //strings for concat
-    
-  staveCount = 0;
-  for (i=0; i < planStaves.length; i++) {
-    for (j=0;j<tabStrings;j++) {
-      if (i === 0) aTab[j] = startChars[j];
-      else aTab[j] = startChars[j].slice(0,2);
-    }
-    while (staveCount < planStaves[i] + 1){
-      for (j=0;j<tabStrings;j++) {
-        aTab[j] += tabMeasures[staveCount][j];
-      }
-      staveCount++;
-    }
-    for (j=0;j<tabStrings;j++) {
-      asciiTabScore += aTab[j] + "|\n";
-    }
-    asciiTabScore += "\n";
-  }
-
-  var asciiTabMeasures = ""; //split by measures
-  aTab = []; //strings for concat
-  for (i=0; i < musicLength; i++) {
-    for (j=0;j<tabStrings;j++) {
-      if (i === 0) aTab[j] = startChars[j];
-      else aTab[j] = startChars[j].slice(0,2);
-    }
-    for (j=0;j<tabStrings;j++) {
-      aTab[j] += tabMeasures[i][j];
-    }
-    for (j=0;j<tabStrings;j++) {
-      asciiTabMeasures += aTab[j] + "|\n";
-    }
-    asciiTabMeasures += "\n";
-  }
-  
-  var asciiTabSplit = ""; 
-    
-if (asciiLen > 0){ //skip if no len
-  var splitStaves = Math.ceil(tabText[0].length/asciiLen);
-  staveCount = 0;
-  aTab = [];
-  for(i=0;i < splitStaves;i++){
-    for (j=0;j<tabStrings;j++) {
-      if (i === 0) aTab[j] = startChars[j];
-      else aTab[j] = startChars[j].slice(0,2);
-    }
-    for (j=0;j<tabStrings;j++) {
-        aTab[j] +=
-          tabText[tabStrings - 1 - j].slice(staveCount * asciiLen, staveCount * asciiLen + asciiLen);
-      }
-    staveCount++;
-    for (j=0;j<tabStrings;j++) {
-      asciiTabSplit += aTab[j] + "\n";
-    }
-    asciiTabSplit += "\n";
-  }
-}
-    
-  if (keepMeasures && mCount < musicLength && asciiLen > 0) { //mCount < musicLength
-    window.alert("Measures do not fit on lines and are split.\nIncrease LEN or reduce RES to keep measures whole.");
-    return asciiTabSplit;
-  }
-    
-  if(keepMeasures && asciiLen === 0) return asciiTabMeasures;
-  if(keepMeasures && asciiLen > 0) return asciiTabScore;
-  if(!keepMeasures && asciiLen > 0) return asciiTabSplit;
-  if(!keepMeasures && asciiLen === 0) return asciiTabInline;
-
-  return "";//never happens
+  return asciiTabInline;    
 } //parse xml  
 
   function pasteLyrics() {
@@ -4197,7 +4107,7 @@ Spa ces and CaPiTals are ok
             down = false;
         }
         if (s === "\uE561") playRings[k] = 0;//cancel default ring for this note
-        if (s === "\xB3") triplet = 3;
+        if (s === "\xB3") triplet = 1;
         if (s === "\uE1fd" || s === "\uE4BA") tied = true;
         if (s in dotDurations) {//except "\uEcb7":1.5, for ring dots
           if (dots === 0) {
